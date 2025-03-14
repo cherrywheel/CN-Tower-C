@@ -1,5 +1,3 @@
-name: C Build (Cross-Platform)
-
 on:
   push:
     branches: [ "main" ]
@@ -19,6 +17,7 @@ jobs:
     - name: Setup MSVC (Windows)
       if: matrix.os == 'windows-latest'
       uses: ilammy/msvc-dev-cmd@v1
+
     - name: Setup GCC (Linux/macOS)
       if: matrix.os != 'windows-latest'
       run: |
@@ -28,20 +27,24 @@ jobs:
     - name: Build with Make
       run: make -C src
 
-    - name: Upload Artifact (Windows) # Example for windows
+    - name: List directory contents (Debug paths)
+      run: ls -al src
+
+    - name: Upload Artifact (Windows)
       if: matrix.os == 'windows-latest'
       uses: actions/upload-artifact@v3
       with:
         name: cn_tower_game-windows
         path: src/cn_tower_game.exe
 
-    - name: Upload Artifact (Linux) # Example for Linux
+    - name: Upload Artifact (Linux)
       if: matrix.os == 'ubuntu-latest'
       uses: actions/upload-artifact@v3
       with:
         name: cn_tower_game-linux
         path: src/cn_tower_game
-    - name: Upload Artifact (macOS) # Example for macOS
+
+    - name: Upload Artifact (macOS)
       if: matrix.os == 'macos-latest'
       uses: actions/upload-artifact@v3
       with:
