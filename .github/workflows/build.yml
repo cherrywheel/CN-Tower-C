@@ -27,10 +27,15 @@ jobs:
       run: |
         if exist src\cn_tower_game.exe (
           echo "Uploading Windows artifact..."
-          uses: actions/upload-artifact@v3
-          with:
-            name: cn_tower_game-windows
-            path: src\cn_tower_game.exe
+          echo "Uploading Windows artifact..." >> $GITHUB_ENV
         ) else (
           echo "Windows build failed, skipping upload."
+          echo "Windows build failed" >> $GITHUB_ENV
         )
+
+    - name: Upload artifact if file exists
+      if: env.WINDOWS_BUILD_SUCCEEDED == 'true'
+      uses: actions/upload-artifact@v3
+      with:
+        name: cn_tower_game-windows
+        path: src\cn_tower_game.exe
