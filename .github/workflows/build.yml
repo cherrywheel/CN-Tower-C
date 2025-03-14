@@ -1,0 +1,49 @@
+name: C Build (Cross-Platform)
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup MSVC (Windows)
+      if: matrix.os == 'windows-latest'
+      uses: ilammy/msvc-dev-cmd@v1
+    - name: Setup GCC (Linux/macOS)
+      if: matrix.os != 'windows-latest'
+      run: |
+        sudo apt-get update  # Needed on Ubuntu
+        sudo apt-get install -y build-essential  # Install build tools (gcc, make)
+
+    - name: Build with Make
+      run: make -C src
+
+    - name: Upload Artifact (Windows) # Example for windows
+      if: matrix.os == 'windows-latest'
+      uses: actions/upload-artifact@v3
+      with:
+        name: cn_tower_game-windows
+        path: src/cn_tower_game.exe
+
+    - name: Upload Artifact (Linux) # Example for Linux
+      if: matrix.os == 'ubuntu-latest'
+      uses: actions/upload-artifact@v3
+      with:
+        name: cn_tower_game-linux
+        path: src/cn_tower_game
+    - name: Upload Artifact (macOS) # Example for macOS
+      if: matrix.os == 'macos-latest'
+      uses: actions/upload-artifact@v3
+      with:
+        name: cn_tower_game-macos
+        path: src/cn_tower_game
