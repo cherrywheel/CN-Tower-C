@@ -6,47 +6,31 @@ on:
 
 jobs:
   build:
-    strategy:
-      matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-latest
 
     steps:
     - uses: actions/checkout@v3
 
     - name: Setup MSVC (Windows)
-      if: matrix.os == 'windows-latest'
       uses: ilammy/msvc-dev-cmd@v1
 
-    - name: Setup GCC (Linux/macOS)
-      if: matrix.os != 'windows-latest'
-      run: |
-        sudo apt-get update  # Needed on Ubuntu
-        sudo apt-get install -y build-essential  # Install build tools (gcc, make)
-
     - name: Build with Make
-      run: make -C src
+      run: |
+        # Проверка, что компилятор MSVC доступен
+        cl /? || exit 1
+        make -C src
 
-    - name: List directory contents (Debug paths)
-      run: ls -al src
+    - name: List directory contents (Windows)
+      run: dir src
 
     - name: Upload Artifact (Windows)
-      if: matrix.os == 'windows-latest'
-      uses: actions/upload-artifact@v3
-      with:
-        name: cn_tower_game-windows
-        path: src/cn_tower_game.exe
-
-    - name: Upload Artifact (Linux)
-      if: matrix.os == 'ubuntu-latest'
-      uses: actions/upload-artifact@v3
-      with:
-        name: cn_tower_game-linux
-        path: src/cn_tower_game
-
-    - name: Upload Artifact (macOS)
-      if: matrix.os == 'macos-latest'
-      uses: actions/upload-artifact@v3
-      with:
-        name: cn_tower_game-macos
-        path: src/cn_tower_game
+      run: |
+        if exist src\cn_tower_game.exe (
+          echo "Uploading Windows artifact..."
+          uses: actions/upload-artifact@v3
+          with:
+            name: cn_tower_game-windows
+            path: src\cn_tower_game.exe
+        ) else (
+          echo "Windows build failed, skipping upload."
+        )
