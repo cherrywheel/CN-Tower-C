@@ -14,27 +14,20 @@ jobs:
     - name: Setup MSVC (Windows)
       uses: ilammy/msvc-dev-cmd@v1
 
-    # - name: Build with Make
-    #   run: |
-    #     # Проверка, что компилятор MSVC доступен
-    #     cl /? || exit 1
-    #     make -C src
-
     - name: List directory contents (Windows)
       run: dir src
 
-    - name: Upload Artifact (Windows)
+    - name: Check if build file exists
+      id: check_build
       run: |
         if exist src\cn_tower_game.exe (
-          echo "Uploading Windows artifact..."
-          echo "Uploading Windows artifact..." >> $GITHUB_ENV
+          echo "Build succeeded" >> $GITHUB_ENV
         ) else (
-          echo "Windows build failed, skipping upload."
-          echo "Windows build failed" >> $GITHUB_ENV
+          echo "Build failed" >> $GITHUB_ENV
         )
 
-    - name: Upload artifact if file exists
-      if: env.WINDOWS_BUILD_SUCCEEDED == 'true'
+    - name: Upload Artifact (Windows)
+      if: env.BUILD_SUCCEEDED == 'Build succeeded'
       uses: actions/upload-artifact@v3
       with:
         name: cn_tower_game-windows
