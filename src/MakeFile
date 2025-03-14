@@ -1,17 +1,19 @@
-CC = gcc  
-CFLAGS = -Wall -Wextra -std=c99 -I../include  
-  
-TARGET = cn_tower_game.exe  
-  
-SRC_DIR = .  
-SRCS = $(wildcard $(SRC_DIR)/*.c)  
-  
-OBJS = $(SRCS:.c=.o)  
-  
-all: $(TARGET)  
-  
-$(TARGET): $(OBJS)  
-	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS)  
-  
-  
-%.o: %.c  
+# src/Makefile
+
+CC = cl
+CFLAGS = /W4 /WX
+LDFLAGS =
+
+SRCS = $(wildcard *.c)
+OBJS = $(SRCS:.c=.obj)
+
+all: cn_tower_game.exe
+
+cn_tower_game.exe: $(OBJS)
+	$(CC) $(LDFLAGS) -Fe$@ $^
+
+%.obj: %.c
+	$(CC) $(CFLAGS) -c $<
+
+clean:
+	del /Q *.obj cn_tower_game.exe
