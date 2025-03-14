@@ -1,0 +1,17 @@
+# Compiled Object files
+*.o
+*.obj
+
+# Executables
+*.exe
+*.out
+
+# Debug/Release directories (Visual Studio)
+Debug/
+Release/
+
+# macOS
+.DS_Store
+
+# CN-Tower game save
+savegame.dat
