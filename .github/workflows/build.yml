@@ -1,28 +1,49 @@
- ```yaml
- name: C Build
+name: C Build (Cross-Platform)
 
- on:
-   push:
-     branches: [ "main" ]  # Trigger on pushes to the 'main' branch
-   pull_request:
-     branches: [ "main" ]  # Trigger on pull requests to the 'main' branch
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 
- jobs:
-   build:
-     runs-on: windows-latest  # Build on a Windows virtual machine
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
 
-     steps:
-     - uses: actions/checkout@v3  # Checkout your repository code
+    steps:
+    - uses: actions/checkout@v3
 
-     - name: Setup MSVC  # Use MSVC for compilation (more reliable on Windows)
-       uses: ilammy/msvc-dev-cmd@v1
+    - name: Setup MSVC (Windows)
+      if: matrix.os == 'windows-latest'
+      uses: ilammy/msvc-dev-cmd@v1
+    - name: Setup GCC (Linux/macOS)
+      if: matrix.os != 'windows-latest'
+      run: |
+        sudo apt-get update  # Needed on Ubuntu
+        sudo apt-get install -y build-essential  # Install build tools (gcc, make)
 
-     - name: Build with Make
-       run: make -C src  # Run 'make' in the 'src' directory
+    - name: Build with Make
+      run: make -C src
 
-     - name: Upload Artifact (Optional)
-       uses: actions/upload-artifact@v3
-       with:
-         name: cn_tower_game
-         path: src/cn_tower_game.exe
- ```
+    - name: Upload Artifact (Windows) # Example for windows
+      if: matrix.os == 'windows-latest'
+      uses: actions/upload-artifact@v3
+      with:
+        name: cn_tower_game-windows
+        path: src/cn_tower_game.exe
+
+    - name: Upload Artifact (Linux) # Example for Linux
+      if: matrix.os == 'ubuntu-latest'
+      uses: actions/upload-artifact@v3
+      with:
+        name: cn_tower_game-linux
+        path: src/cn_tower_game
+    - name: Upload Artifact (macOS) # Example for macOS
+      if: matrix.os == 'macos-latest'
+      uses: actions/upload-artifact@v3
+      with:
+        name: cn_tower_game-macos
+        path: src/cn_tower_game
