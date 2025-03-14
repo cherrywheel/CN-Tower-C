@@ -14,21 +14,17 @@ jobs:
     - name: Setup MSVC (Windows)
       uses: ilammy/msvc-dev-cmd@v1
 
+    - name: Build with Make (Windows)  # Added build step
+      run: |
+        cd src
+        nmake  # Assuming you have a makefile that uses nmake
+
     - name: List directory contents (Windows)
       run: dir src
 
-    - name: Check if build file exists
-      id: check_build
-      run: |
-        if exist src\cn_tower_game.exe (
-          echo "Build succeeded" >> $GITHUB_ENV
-        ) else (
-          echo "Build failed" >> $GITHUB_ENV
-        )
-
     - name: Upload Artifact (Windows)
-      if: env.BUILD_SUCCEEDED == 'Build succeeded'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v3  # Moved upload-artifact to a separate step
       with:
         name: cn_tower_game-windows
         path: src\cn_tower_game.exe
+      if: success() && (github.event_name == 'push' || github.event_name == 'pull_request' && github.event.pull_request.merged == true)  # Check for successful build and upload only on merge or push
