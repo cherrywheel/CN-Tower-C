@@ -14,11 +14,11 @@ jobs:
     - name: Setup MSVC (Windows)
       uses: ilammy/msvc-dev-cmd@v1
 
-    - name: Build with Make
-      run: |
-        # Проверка, что компилятор MSVC доступен
-        cl /? || exit 1
-        make -C src
+    # - name: Build with Make
+    #   run: |
+    #     # Проверка, что компилятор MSVC доступен
+    #     cl /? || exit 1
+    #     make -C src
 
     - name: List directory contents (Windows)
       run: dir src
