@@ -8,7 +8,7 @@
 
 # Debug/Release directories (Visual Studio)
 Debug/
-Release/
+# Release/
 
 # macOS
 .DS_Store
