@@ -298,3 +298,7 @@ it also kicks in on its own when output isnt a terminal
 the rest are alternatives
 
 the repo preview is set by hand in settings → general → social preview
+
+## license
+
+mit, see [LICENSE](LICENSE)
