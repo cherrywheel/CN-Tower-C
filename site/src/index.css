@@ -1,0 +1,130 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@theme inline {
+  --font-sans: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+}
+
+:root {
+  /* Default: Dark Toronto Night Theme */
+  --background: oklch(0.12 0.015 260);
+  --foreground: oklch(0.96 0.01 260);
+  --card: oklch(0.15 0.015 260);
+  --card-foreground: oklch(0.96 0.01 260);
+  --popover: oklch(0.15 0.015 260);
+  --popover-foreground: oklch(0.96 0.01 260);
+  --primary: oklch(0.65 0.22 25);
+  --primary-foreground: oklch(0.98 0.01 260);
+  --secondary: oklch(0.20 0.015 260);
+  --secondary-foreground: oklch(0.92 0.01 260);
+  --muted: oklch(0.18 0.015 260);
+  --muted-foreground: oklch(0.68 0.02 260);
+  --accent: oklch(0.65 0.22 25);
+  --accent-foreground: oklch(0.98 0.01 260);
+  --destructive: oklch(0.65 0.22 25);
+  --border: oklch(0.24 0.015 260);
+  --input: oklch(0.24 0.015 260);
+  --ring: oklch(0.65 0.22 25);
+  --radius: 0.5rem;
+}
+
+/* Light theme when prefers-color-scheme: light (and not manually locked to dark) */
+@media (prefers-color-scheme: light) {
+  :root:not(.dark) {
+    --background: oklch(0.98 0.005 260);
+    --foreground: oklch(0.15 0.02 260);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.15 0.02 260);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.15 0.02 260);
+    --primary: oklch(0.58 0.22 25);
+    --primary-foreground: oklch(0.99 0.005 260);
+    --secondary: oklch(0.93 0.01 260);
+    --secondary-foreground: oklch(0.20 0.02 260);
+    --muted: oklch(0.94 0.01 260);
+    --muted-foreground: oklch(0.45 0.02 260);
+    --accent: oklch(0.58 0.22 25);
+    --accent-foreground: oklch(0.99 0.005 260);
+    --destructive: oklch(0.58 0.22 25);
+    --border: oklch(0.88 0.01 260);
+    --input: oklch(0.88 0.01 260);
+    --ring: oklch(0.58 0.22 25);
+  }
+}
+
+/* Explicit class overrides */
+html.light {
+  --background: oklch(0.98 0.005 260);
+  --foreground: oklch(0.15 0.02 260);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.15 0.02 260);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.15 0.02 260);
+  --primary: oklch(0.58 0.22 25);
+  --primary-foreground: oklch(0.99 0.005 260);
+  --secondary: oklch(0.93 0.01 260);
+  --secondary-foreground: oklch(0.20 0.02 260);
+  --muted: oklch(0.94 0.01 260);
+  --muted-foreground: oklch(0.45 0.02 260);
+  --accent: oklch(0.58 0.22 25);
+  --accent-foreground: oklch(0.99 0.005 260);
+  --destructive: oklch(0.58 0.22 25);
+  --border: oklch(0.88 0.01 260);
+  --input: oklch(0.88 0.01 260);
+  --ring: oklch(0.58 0.22 25);
+}
+
+html.dark {
+  --background: oklch(0.12 0.015 260);
+  --foreground: oklch(0.96 0.01 260);
+  --card: oklch(0.15 0.015 260);
+  --card-foreground: oklch(0.96 0.01 260);
+  --popover: oklch(0.15 0.015 260);
+  --popover-foreground: oklch(0.96 0.01 260);
+  --primary: oklch(0.65 0.22 25);
+  --primary-foreground: oklch(0.98 0.01 260);
+  --secondary: oklch(0.20 0.015 260);
+  --secondary-foreground: oklch(0.92 0.01 260);
+  --muted: oklch(0.18 0.015 260);
+  --muted-foreground: oklch(0.68 0.02 260);
+  --accent: oklch(0.65 0.22 25);
+  --accent-foreground: oklch(0.98 0.01 260);
+  --destructive: oklch(0.65 0.22 25);
+  --border: oklch(0.24 0.015 260);
+  --input: oklch(0.24 0.015 260);
+  --ring: oklch(0.65 0.22 25);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+  }
+  code, pre, kbd {
+    font-family: var(--font-mono);
+  }
+}
+
+/* Custom terminal scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}

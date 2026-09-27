@@ -1,10 +1,10 @@
 on:
   push:
     branches: [ "main" ]
-    paths-ignore: [ "**.md", "assets/**", "LICENSE" ]
+    paths-ignore: [ "**.md", "assets/**", "LICENSE", "site/**" ]
   pull_request:
     branches: [ "main" ]
-    paths-ignore: [ "**.md", "assets/**", "LICENSE" ]
+    paths-ignore: [ "**.md", "assets/**", "LICENSE", "site/**" ]
   workflow_dispatch:
 
 # a new push cancels the old run on the same branch except on main so releases finish
