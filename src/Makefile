@@ -8,8 +8,12 @@ OBJS = main.obj game.obj dialogues.obj utils.obj ui.obj
 
 all: cn_tower_game.exe
 
-cn_tower_game.exe: $(OBJS)
-	$(CC) /nologo /Fe$@ $(OBJS)
+cn_tower_game.exe: $(OBJS) cn_tower.res
+	$(CC) /nologo /Fe$@ $(OBJS) cn_tower.res
+
+# Иконка exe
+cn_tower.res: cn_tower.rc ..\assets\cn_tower.ico
+	rc /nologo /fo cn_tower.res cn_tower.rc
 
 .c.obj:
 	$(CC) $(CFLAGS) /c $<
@@ -17,4 +21,4 @@ cn_tower_game.exe: $(OBJS)
 $(OBJS): ..\include\game.h ..\include\dialogues.h ..\include\ui.h
 
 clean:
-	del /Q *.obj cn_tower_game.exe
+	del /Q *.obj *.res cn_tower_game.exe

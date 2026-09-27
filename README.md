@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/cover.webp" width="360" alt="Котик в шарфе смотрит на CN Tower ночью">
+</p>
+
 # CN Tower (C)
 
 Порт текстового квеста [CN-Tower](https://github.com/cherrywheel/CN-Tower) с Python на C.
@@ -66,3 +70,14 @@ make
   находится к востоку от стеклянного пола, найденный телефон можно вернуть
   в справочной (`Return Phone`) за награду $100, со смотровой площадки можно
   спуститься на лифте (`Go Back`), а Алекса можно встретить второй раз.
+
+## Картинки
+
+В `assets/`:
+
+* `cover.webp` — обложка README;
+* `icon.webp`, `cn_tower.ico` — иконка, `.ico` вшивается в `cn_tower_game.exe`;
+* `sticker.webp`, `icon-flat.png` — запасные варианты;
+* `social-preview.png` — превью репозитория 1280×640, загружается вручную:
+  Settings → General → Social preview.
+

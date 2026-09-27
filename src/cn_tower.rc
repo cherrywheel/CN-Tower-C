@@ -1,0 +1,4 @@
+#pragma code_page(65001)
+
+// Иконка cn_tower_game.exe (Проводник, панель задач)
+1 ICON "../assets/cn_tower.ico"
