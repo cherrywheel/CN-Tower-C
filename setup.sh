@@ -304,7 +304,8 @@ sh4 sh4-linux-gnu-gcc libc6-dev-sh4-cross qemu-sh4
                     say "$arch skipped since theres no zig (pip install ziglang)"
                     continue
                 fi
-                cc="python3 -m ziglang cc -target ${cc#zig:}"
+                # static n64 mips makes clang warn that it ignores -fno-PIC which -Werror turns fatal
+                cc="python3 -m ziglang cc -target ${cc#zig:} -Wno-option-ignored"
                 ;;
         esac
         [ "$qemu" = "-" ] && qemu=""
