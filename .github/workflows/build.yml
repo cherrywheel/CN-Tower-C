@@ -78,7 +78,7 @@ jobs:
   # every linux arch in one job through setup.sh --cross
   # static binaries cross compiled and tested under qemu
   build-linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
     - uses: actions/checkout@v6
@@ -130,7 +130,7 @@ jobs:
 
   # webassembly for wasmtime wasmer and friends
   build-wasm:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
     - uses: actions/checkout@v6
@@ -158,7 +158,7 @@ jobs:
 
   # native builds inside vms through setup.sh and each one plays through to the win
   build-freebsd:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
     - uses: actions/checkout@v6
     - name: build and play in freebsd
@@ -172,7 +172,7 @@ jobs:
         path: src/cn_tower_game
 
   build-openbsd:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
     - uses: actions/checkout@v6
     - name: build and play in openbsd
@@ -186,7 +186,7 @@ jobs:
         path: src/cn_tower_game
 
   build-netbsd:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
     - uses: actions/checkout@v6
     - name: build and play in netbsd
@@ -200,7 +200,7 @@ jobs:
         path: src/cn_tower_game
 
   build-dragonflybsd:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
     - uses: actions/checkout@v6
     - name: build and play in dragonfly bsd
@@ -214,7 +214,7 @@ jobs:
         path: src/cn_tower_game
 
   build-solaris:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
     - uses: actions/checkout@v6
     - name: build and play in solaris
@@ -229,7 +229,7 @@ jobs:
         path: src/cn_tower_game
 
   build-illumos:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
     - uses: actions/checkout@v6
     - name: build and play in omnios
@@ -244,7 +244,7 @@ jobs:
         path: src/cn_tower_game
 
   build-haiku:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
     - uses: actions/checkout@v6
     - name: build and play in haiku
@@ -260,7 +260,7 @@ jobs:
   # elbrus e2k with mcst lcc from the varyashine/e2k-toolchain release
   # TOOLCHAIN_TOKEN is only needed while that repo is private
   build-elbrus:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     env:
       TOOLCHAIN_REPO: varyashine/e2k-toolchain
       TOOLCHAIN_TAG: lcc-1.31.05
@@ -311,7 +311,7 @@ jobs:
   # ipk for 24.10 and apk for 25.12 and where theres an openwrt rootfs image
   # the package gets installed with opkg or apk and played through to the win
   build-openwrt:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -403,7 +403,7 @@ jobs:
   release:
     if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build-windows.result == 'success' && needs.build-linux.result == 'success' && needs.build-macos.result == 'success' }}
     needs: [ build-windows, build-linux, build-macos, build-elbrus, build-openwrt, build-wasm, build-freebsd, build-openbsd, build-netbsd, build-dragonflybsd, build-solaris, build-illumos, build-haiku ]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: write
 
