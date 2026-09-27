@@ -3,10 +3,24 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
   build-windows:
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            vcvars: x64
+            test: true
+          - arch: x86
+            vcvars: x64_x86
+            test: true
+          - arch: arm64 # Кросс-компиляция, запустить на x64 нельзя
+            vcvars: x64_arm64
+            test: false
 
     steps:
     - uses: actions/checkout@v6
@@ -17,24 +31,94 @@ jobs:
       run: |
         for /f "usebackq delims=" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set "VS_PATH=%%i"
         if not defined VS_PATH exit /b 1
-        call "%VS_PATH%\VC\Auxiliary\Build\vcvars64.bat" || exit /b 1
+        call "%VS_PATH%\VC\Auxiliary\Build\vcvarsall.bat" ${{ matrix.vcvars }} || exit /b 1
         cd src
         nmake
+
+    - name: Прохождение до победы
+      if: matrix.test
+      shell: cmd
+      run: |
+        cd src
+        set CN_TOWER_SEED=1
+        cn_tower_game.exe < ..\tests\win_path.txt > ..\win_output.txt
+        findstr /C:"(Win)" ..\win_output.txt || (type ..\win_output.txt & exit /b 1)
 
     - name: Загрузка exe
       uses: actions/upload-artifact@v7
       with:
-        name: cn_tower_game-windows
+        name: cn_tower_game-windows-${{ matrix.arch }}
         path: src\cn_tower_game.exe
 
+  # Статические бинарники: кросс-компиляция и проверка под QEMU
   build-linux:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            triple: x86_64-linux-gnu
+            libc: ""
+            qemu: ""
+          - arch: aarch64 # В том числе Байкал-М
+            triple: aarch64-linux-gnu
+            libc: libc6-dev-arm64-cross
+            qemu: qemu-aarch64
+          - arch: armhf
+            triple: arm-linux-gnueabihf
+            libc: libc6-dev-armhf-cross
+            qemu: qemu-arm
+          - arch: i686
+            triple: i686-linux-gnu
+            libc: libc6-dev-i386-cross
+            qemu: qemu-i386
+          - arch: riscv64
+            triple: riscv64-linux-gnu
+            libc: libc6-dev-riscv64-cross
+            qemu: qemu-riscv64
+          - arch: mipsel # Байкал-T1
+            triple: mipsel-linux-gnu
+            libc: libc6-dev-mipsel-cross
+            qemu: qemu-mipsel
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Установка тулчейна
+      if: matrix.qemu != ''
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq --no-install-recommends gcc-${{ matrix.triple }} ${{ matrix.libc }} qemu-user
+
+    - name: Сборка через make
+      run: make -C src CC=${{ matrix.triple }}-gcc CFLAGS="-std=c99 -Wall -Wextra -pedantic -Werror -O2" LDFLAGS="-static"
+
+    - name: Прохождение до победы
+      run: |
+        cd src
+        file cn_tower_game
+        CN_TOWER_SEED=1 ${{ matrix.qemu }} ./cn_tower_game < ../tests/win_path.txt > ../win_output.txt
+        grep -F "(Win)" ../win_output.txt || { cat ../win_output.txt; exit 1; }
+
+    - name: Загрузка бинарника
+      uses: actions/upload-artifact@v7
+      with:
+        name: cn_tower_game-linux-${{ matrix.arch }}
+        path: src/cn_tower_game
+
+  # Универсальный бинарник: Apple Silicon и Intel в одном файле
+  build-macos:
+    runs-on: macos-latest
 
     steps:
     - uses: actions/checkout@v6
 
     - name: Сборка через make
-      run: make -C src CFLAGS="-std=c99 -Wall -Wextra -pedantic -Werror -O2"
+      run: |
+        ARCH_FLAGS="-arch arm64 -arch x86_64 -mmacosx-version-min=11.0"
+        make -C src CC=clang CFLAGS="-std=c99 -Wall -Wextra -pedantic -Werror -O2 $ARCH_FLAGS" LDFLAGS="$ARCH_FLAGS"
+        lipo -info src/cn_tower_game
 
     - name: Прохождение до победы
       run: |
@@ -45,13 +129,13 @@ jobs:
     - name: Загрузка бинарника
       uses: actions/upload-artifact@v7
       with:
-        name: cn_tower_game-linux
+        name: cn_tower_game-macos-universal
         path: src/cn_tower_game
 
-  # Релиз на каждый пуш в main, если обе сборки прошли
+  # Релиз на каждый пуш в main, если все сборки прошли
   release:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [ build-windows, build-linux ]
+    needs: [ build-windows, build-linux, build-macos ]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -66,12 +150,23 @@ jobs:
 
     - name: Упаковать
       run: |
-        mkdir release
-        cp artifacts/cn_tower_game-windows/cn_tower_game.exe release/cn_tower_game-windows.exe
-        mkdir cn_tower_game-linux
-        cp artifacts/cn_tower_game-linux/cn_tower_game README.md cn_tower_game-linux/
-        chmod +x cn_tower_game-linux/cn_tower_game
-        tar -czf release/cn_tower_game-linux.tar.gz cn_tower_game-linux
+        mkdir release pkg
+        for dir in artifacts/*; do
+          name=$(basename "$dir")
+          case "$name" in
+            *windows*)
+              cp "$dir/cn_tower_game.exe" "release/$name.exe"
+              ;;
+            *)
+              # Артефакты теряют право на запуск, возвращаем его в архиве
+              mkdir "pkg/$name"
+              cp "$dir/cn_tower_game" README.md "pkg/$name/"
+              chmod +x "pkg/$name/cn_tower_game"
+              tar -C pkg -czf "release/$name.tar.gz" "$name"
+              ;;
+          esac
+        done
+        ls -la release
 
     - name: Создать релиз
       env:

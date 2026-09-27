@@ -1,5 +1,6 @@
 #ifndef _WIN32
 #define _POSIX_C_SOURCE 200809L // Для fileno, isatty и termios
+#define _DARWIN_C_SOURCE        // На macOS без этого не видно struct winsize и TIOCGWINSZ
 #endif
 
 #include "ui.h"

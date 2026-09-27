@@ -18,6 +18,20 @@ static const char *valid_items[] = {
     NULL
 };
 
+// Свой генератор случайных чисел: rand() на разных системах даёт разные
+// последовательности, а с этим один и тот же seed везде перемешивает одинаково
+static uint32_t random_state = 1;
+
+void game_seed(uint32_t seed) {
+    random_state = seed;
+}
+
+// Случайное число от 0 до n - 1 (LCG из стандарта C)
+static int random_below(int n) {
+    random_state = random_state * 1103515245u + 12345u;
+    return (int)((random_state >> 16) & 0x7fff) % n;
+}
+
 // Вывести одну реплику локации
 static void say(const char *location, const char *key, bool sweet_mode) {
     printf("%s\n", get_dialogue(location, key, sweet_mode));
@@ -76,7 +90,7 @@ static void support_alex(Inventory *inventory, bool sweet_mode) {
 
     // Перемешать варианты (Фишер-Йетс)
     for (int i = num_options - 1; i > 0; i--) {
-        int j = rand() % (i + 1);
+        int j = random_below(i + 1);
         const char *tmp = options[i];
         options[i] = options[j];
         options[j] = tmp;

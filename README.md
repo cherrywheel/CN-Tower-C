@@ -8,8 +8,31 @@
 
 ## Скачать
 
-Готовые сборки для Windows и Linux лежат в [Releases](../../releases).
+Готовые сборки лежат в [Releases](../../releases).
 Релиз собирается автоматически после каждого пуша в `main`.
+
+| Система | Архитектура | Файл |
+|---|---|---|
+| Windows | x64 | `cn_tower_game-windows-x64.exe` |
+| Windows | x86 (32 бита) | `cn_tower_game-windows-x86.exe` |
+| Windows | ARM64 | `cn_tower_game-windows-arm64.exe` |
+| macOS 11+ | Apple Silicon и Intel | `cn_tower_game-macos-universal.tar.gz` |
+| Linux | x86_64 | `cn_tower_game-linux-x86_64.tar.gz` |
+| Linux | ARM64, в том числе Байкал-М | `cn_tower_game-linux-aarch64.tar.gz` |
+| Linux | ARMv7 (Raspberry Pi и т. п.) | `cn_tower_game-linux-armhf.tar.gz` |
+| Linux | x86 (32 бита) | `cn_tower_game-linux-i686.tar.gz` |
+| Linux | RISC-V 64 | `cn_tower_game-linux-riscv64.tar.gz` |
+| Linux | MIPS32 LE, Байкал-T1 | `cn_tower_game-linux-mipsel.tar.gz` |
+
+Linux-сборки статические, работают на любом дистрибутиве. Каждая сборка,
+кроме Windows ARM64, в CI проходит игру до победы (не x86 — под QEMU).
+
+На macOS сборка не подписана, поэтому после распаковки снимите карантин:
+
+```
+xattr -d com.apple.quarantine cn_tower_game
+./cn_tower_game
+```
 
 ## Сборка
 
@@ -21,11 +44,27 @@ nmake
 cn_tower_game.exe
 ```
 
-Linux / macOS:
+Linux / macOS / BSD:
 
 ```
 cd src
 make
+./cn_tower_game
+```
+
+Код — чистый C99 плюс POSIX (на Windows — WinAPI), без внешних библиотек,
+поэтому собирается на любой архитектуре, где есть компилятор C.
+
+### Эльбрус
+
+Под Эльбрус (e2k) готовой сборки нет: у GitHub нет таких машин, а компилятор
+`lcc` от МЦСТ не распространяется свободно. Код не использует ничего,
+кроме C99 и POSIX, поэтому на самом Эльбрусе игра должна собираться тем же
+`make` (на реальной машине это пока не проверялось):
+
+```
+cd src
+make CC=lcc
 ./cn_tower_game
 ```
 

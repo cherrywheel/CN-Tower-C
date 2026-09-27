@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
     }
 
     const char *seed = getenv("CN_TOWER_SEED"); // Чтобы варианты у Алекса повторялись (для тестов)
-    srand(seed != NULL ? (unsigned)atoi(seed) : (unsigned)time(NULL));
+    game_seed(seed != NULL ? (uint32_t)strtoul(seed, NULL, 10) : (uint32_t)time(NULL));
 
     ui_init(allow_tui);
     ui_set_status("CN Tower");

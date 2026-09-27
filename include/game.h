@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <time.h>
 #include <ctype.h>
+#include <stdint.h>
 
 // --- Константы ---
 #define STARTING_MONEY 40
@@ -53,6 +54,7 @@ typedef enum {
 // --- Объявления функций (прототипы) ---
 
 // Из game.c
+void game_seed(uint32_t seed);
 void new_game(char *location, Inventory *inventory);
 GameState enter_location(char *location, Inventory *inventory, bool sweet_mode);
 GameState process_command(const char *command, char *location, Inventory *inventory, bool *sweet_mode);
