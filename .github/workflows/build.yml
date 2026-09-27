@@ -368,13 +368,13 @@ jobs:
         cp tests/win_path.txt openwrt-test/
         ls -la openwrt-test
 
-    # ubuntus qemu-user-static registers every arch including 32 bit mips
-    # which docker/setup-qemu-action doesnt have
+    # ubuntus qemu-user-binfmt registers every arch including 32 bit mips
+    # which docker/setup-qemu-action doesnt have, since 26.04 qemu-user itself is static
     - name: set up qemu for the openwrt rootfs
       if: matrix.test
       run: |
         sudo apt-get update -qq
-        sudo apt-get install -y -qq --no-install-recommends qemu-user-static
+        sudo apt-get install -y -qq --no-install-recommends qemu-user-binfmt
 
     - name: install and play through to the win in openwrt
       if: matrix.test

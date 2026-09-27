@@ -252,6 +252,8 @@ if [ "$CROSS" = 1 ]; then
 
     # arch compiler package qemu where - means none needed
     # zig:<target> builds with zig from pypi when its installed
+    # mips goes through zig since ubuntu 26.04 dropped the mips cross compilers
+    # and soft float musl runs on routers without an fpu too
     TARGETS="
 x86_64 gcc - -
 i686 i686-linux-gnu-gcc libc6-dev-i386-cross qemu-i386
@@ -260,10 +262,10 @@ armhf arm-linux-gnueabihf-gcc libc6-dev-armhf-cross qemu-arm
 armel arm-linux-gnueabi-gcc libc6-dev-armel-cross qemu-arm
 riscv64 riscv64-linux-gnu-gcc libc6-dev-riscv64-cross qemu-riscv64
 loongarch64 zig:loongarch64-linux-musl - qemu-loongarch64
-mipsel mipsel-linux-gnu-gcc libc6-dev-mipsel-cross qemu-mipsel
-mips mips-linux-gnu-gcc libc6-dev-mips-cross qemu-mips
-mips64el mips64el-linux-gnuabi64-gcc libc6-dev-mips64el-cross qemu-mips64el
-mips64 mips64-linux-gnuabi64-gcc libc6-dev-mips64-cross qemu-mips64
+mipsel zig:mipsel-linux-musleabi - qemu-mipsel
+mips zig:mips-linux-musleabi - qemu-mips
+mips64el zig:mips64el-linux-muslabi64 - qemu-mips64el
+mips64 zig:mips64-linux-muslabi64 - qemu-mips64
 ppc64le powerpc64le-linux-gnu-gcc libc6-dev-ppc64el-cross qemu-ppc64le
 ppc64 powerpc64-linux-gnu-gcc libc6-dev-ppc64-cross qemu-ppc64
 powerpc powerpc-linux-gnu-gcc libc6-dev-powerpc-cross qemu-ppc
