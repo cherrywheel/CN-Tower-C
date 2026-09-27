@@ -148,22 +148,14 @@ jobs:
       with:
         path: artifacts
 
-    - name: Упаковать
+    - name: Собрать файлы релиза
       run: |
-        mkdir release pkg
+        mkdir release
         for dir in artifacts/*; do
           name=$(basename "$dir")
           case "$name" in
-            *windows*)
-              cp "$dir/cn_tower_game.exe" "release/$name.exe"
-              ;;
-            *)
-              # Артефакты теряют право на запуск, возвращаем его в архиве
-              mkdir "pkg/$name"
-              cp "$dir/cn_tower_game" README.md "pkg/$name/"
-              chmod +x "pkg/$name/cn_tower_game"
-              tar -C pkg -czf "release/$name.tar.gz" "$name"
-              ;;
+            *windows*) cp "$dir/cn_tower_game.exe" "release/$name.exe" ;;
+            *)         cp "$dir/cn_tower_game" "release/$name" ;;
           esac
         done
         ls -la release
