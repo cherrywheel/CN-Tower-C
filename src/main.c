@@ -1,4 +1,7 @@
 #include "game.h"
+#include "ui.h"
+
+#define MAX_COMMANDS 32
 
 // Проверка возраста, как в Python-версии: спросить один раз и запомнить
 static bool check_age(void) {
@@ -29,16 +32,26 @@ static bool check_age(void) {
     }
 }
 
-int main(void) {
+int main(int argc, char **argv) {
     char location[LOCATION_SIZE];
     Inventory inventory;
     bool sweet_mode = false;
+    bool allow_tui = getenv("CN_TOWER_PLAIN") == NULL;
+
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--plain") == 0) {
+            allow_tui = false; // Обычный построчный режим без TUI
+        }
+    }
 
     const char *seed = getenv("CN_TOWER_SEED"); // Чтобы варианты у Алекса повторялись (для тестов)
     srand(seed != NULL ? (unsigned)atoi(seed) : (unsigned)time(NULL));
 
+    ui_init(allow_tui);
+    ui_set_status("CN Tower");
     printf("=== CN Tower ===\n");
     if (!check_age()) {
+        ui_shutdown();
         return 0;
     }
 
@@ -62,6 +75,26 @@ int main(void) {
             printf("Game over. Type 'Restart' to play again, 'Load' to load your save or 'Exit' to quit.\n");
         }
 
+        // Статус и подсказки для TUI
+        char status[256];
+        const char *commands[MAX_COMMANDS];
+        int count = 0;
+        int primary = 0;
+        if (state == GAME_OVER) {
+            commands[count++] = "Restart";
+            commands[count++] = "Load";
+            commands[count++] = "Exit";
+            primary = count;
+        } else {
+            count = primary = available_commands(location, &inventory, commands, MAX_COMMANDS);
+            for (int i = 0; global_commands[i] != NULL && count < MAX_COMMANDS; i++) {
+                commands[count++] = global_commands[i];
+            }
+        }
+        format_status(status, sizeof(status), location, &inventory, sweet_mode);
+        ui_set_status(status);
+        ui_set_hints(commands, count, primary);
+
         printf("> ");
         char *command = get_player_input();
         if (command == NULL) {
@@ -82,6 +115,7 @@ int main(void) {
         free(command);
     }
 
+    ui_shutdown();
     printf("Thanks for playing!\n");
     return 0;
 }

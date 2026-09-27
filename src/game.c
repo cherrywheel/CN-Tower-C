@@ -1,5 +1,6 @@
 #include "game.h"
 #include "dialogues.h"
+#include "ui.h"
 
 // Все локации игры (для проверки сохранений и меню отладки)
 static const char *locations[] = {
@@ -20,6 +21,11 @@ static const char *valid_items[] = {
 // Вывести одну реплику локации
 static void say(const char *location, const char *key, bool sweet_mode) {
     printf("%s\n", get_dialogue(location, key, sweet_mode));
+}
+
+// Строка "Hints: ..." нужна только в обычном режиме, в TUI подсказки внизу экрана
+static void hint(const char *location, const char *key, bool sweet_mode) {
+    if (!ui_active()) say(location, key, sweet_mode);
 }
 
 static bool is(const char *a, const char *b) {
@@ -137,7 +143,7 @@ GameState enter_location(char *location, Inventory *inventory, bool sweet_mode) 
                 say(loc, "base_worker", sweet_mode);
             }
             say(loc, "base_what", sweet_mode);
-            say(loc, "base_hints", sweet_mode);
+            hint(loc, "base_hints", sweet_mode);
         } else if (is(loc, "alex_rivers")) {
             if (!inventory->met_alex) {
                 say(loc, "alex_intro", sweet_mode);
@@ -169,28 +175,28 @@ GameState enter_location(char *location, Inventory *inventory, bool sweet_mode) 
                     support_alex(inventory, sweet_mode);
                 }
                 say(loc, "alex_what", sweet_mode);
-                say(loc, "alex_hints", sweet_mode);
+                hint(loc, "alex_hints", sweet_mode);
             }
         } else if (is(loc, "Patrick")) {
             say(loc, "patrick_intro", sweet_mode);
             say(loc, "patrick_greeting", sweet_mode);
             say(loc, "patrick_moves", sweet_mode);
             say(loc, "patrick_what", sweet_mode);
-            say(loc, "patrick_hints", sweet_mode);
+            hint(loc, "patrick_hints", sweet_mode);
         } else if (is(loc, "entrance")) {
             say(loc, "entrance_line", sweet_mode);
             say(loc, has_item(inventory, "ticket") ? "entrance_ticket" : "entrance_no_ticket", sweet_mode);
             say(loc, "entrance_what", sweet_mode);
-            say(loc, "entrance_hints", sweet_mode);
+            hint(loc, "entrance_hints", sweet_mode);
         } else if (is(loc, "ticket_booth")) {
             say(loc, "ticket_price", sweet_mode);
             say(loc, "ticket_what", sweet_mode);
-            say(loc, "ticket_hints", sweet_mode);
+            hint(loc, "ticket_hints", sweet_mode);
         } else if (is(loc, "security")) {
             say(loc, "security_check", sweet_mode);
             say(loc, has_item(inventory, "ticket") ? "security_pass" : "security_no_ticket", sweet_mode);
             say(loc, "security_what", sweet_mode);
-            say(loc, "security_hints", sweet_mode);
+            hint(loc, "security_hints", sweet_mode);
         } else if (is(loc, "elevator")) {
             say(loc, "elevator_close", sweet_mode);
             say(loc, "elevator_up", sweet_mode);
@@ -202,18 +208,18 @@ GameState enter_location(char *location, Inventory *inventory, bool sweet_mode) 
             say(loc, "lookout_see", sweet_mode);
             say(loc, "lookout_directions", sweet_mode);
             say(loc, "lookout_what", sweet_mode);
-            say(loc, "lookout_hints", sweet_mode);
+            hint(loc, "lookout_hints", sweet_mode);
         } else if (is(loc, "glass_floor")) {
             say(loc, "glass_scary", sweet_mode);
             say(loc, "glass_see", sweet_mode);
             say(loc, "glass_directions", sweet_mode);
             say(loc, "glass_what", sweet_mode);
-            say(loc, "glass_hints", sweet_mode);
+            hint(loc, "glass_hints", sweet_mode);
         } else if (is(loc, "edgewalk_registration")) {
             say(loc, "edgewalk_desk", sweet_mode);
             say(loc, has_item(inventory, "edgewalk_ticket") ? "edgewalk_ticket" : "edgewalk_no_ticket", sweet_mode);
             say(loc, "edgewalk_what", sweet_mode);
-            say(loc, "edgewalk_hints", sweet_mode);
+            hint(loc, "edgewalk_hints", sweet_mode);
         } else if (is(loc, "edgewalk_preparation")) {
             say(loc, "edgewalk_prep", sweet_mode);
             say(loc, "edgewalk_nervous", sweet_mode);
@@ -230,12 +236,12 @@ GameState enter_location(char *location, Inventory *inventory, bool sweet_mode) 
                 say(loc, "gift_mask", sweet_mode);
             }
             say(loc, "gift_what", sweet_mode);
-            say(loc, "gift_hints", sweet_mode);
+            hint(loc, "gift_hints", sweet_mode);
         } else if (is(loc, "information_booth")) {
             say(loc, "info_brochures", sweet_mode);
             say(loc, "info_staff", sweet_mode);
             say(loc, "info_what", sweet_mode);
-            say(loc, "info_hints", sweet_mode);
+            hint(loc, "info_hints", sweet_mode);
         } else if (is(loc, "worker")) {
             say(loc, "worker_tired", sweet_mode);
             say(loc, "worker_help", sweet_mode);
@@ -245,17 +251,17 @@ GameState enter_location(char *location, Inventory *inventory, bool sweet_mode) 
             }
             say(loc, "worker_fifth", sweet_mode);
             say(loc, "worker_what", sweet_mode);
-            say(loc, "worker_hints", sweet_mode);
+            hint(loc, "worker_hints", sweet_mode);
         } else if (is(loc, "open_box")) {
             say(loc, "box_contents", sweet_mode);
             say(loc, "box_what", sweet_mode);
-            say(loc, "box_hints", sweet_mode);
+            hint(loc, "box_hints", sweet_mode);
         } else if (is(loc, "caught_stealing")) {
             say(loc, "caught_seen", sweet_mode);
             say(loc, "caught_worker", sweet_mode);
             say(loc, "caught_security", sweet_mode);
             say(loc, "caught_what", sweet_mode);
-            say(loc, "caught_hints", sweet_mode);
+            hint(loc, "caught_hints", sweet_mode);
         } else if (is(loc, "storage_room")) {
             say(loc, "storage_thanks", sweet_mode);
             if (!inventory->worker_task) { // Платят только один раз
@@ -265,23 +271,25 @@ GameState enter_location(char *location, Inventory *inventory, bool sweet_mode) 
                 inventory->worker_task = true;
             }
             say(loc, "storage_what", sweet_mode);
-            say(loc, "storage_hints", sweet_mode);
+            hint(loc, "storage_hints", sweet_mode);
         } else if (is(loc, "just_a_chill_guy")) {
             say(loc, "chill_laughing", sweet_mode);
             if (has_item(inventory, "mask") && has_item(inventory, "bible")) {
                 say(loc, "chill_ready", sweet_mode);
-                printf("Hints: 'Go West', 'Use Mask', 'Use Bible', 'Ask About Corner', 'Back', 'Exit', 'Restart'.\n");
+                if (!ui_active()) {
+                    printf("Hints: 'Go West', 'Use Mask', 'Use Bible', 'Ask About Corner', 'Back', 'Exit', 'Restart'.\n");
+                }
             } else if (has_item(inventory, "bible") && !has_item(inventory, "mask")) {
                 say(loc, "chill_quadrobists_gone", sweet_mode);
                 say(loc, "chill_what", sweet_mode);
-                say(loc, "chill_hints1", sweet_mode);
+                hint(loc, "chill_hints1", sweet_mode);
             } else if (inventory->used_bible) {
                 say(loc, "chill_scared_quadrobists", sweet_mode);
                 say(loc, "chill_what", sweet_mode);
-                say(loc, "chill_hints2", sweet_mode);
+                hint(loc, "chill_hints2", sweet_mode);
             } else {
                 say(loc, "chill_what", sweet_mode);
-                say(loc, "chill_hints3", sweet_mode);
+                hint(loc, "chill_hints3", sweet_mode);
             }
         } else if (is(loc, "corner")) {
             if (has_item(inventory, "mask") && inventory->used_mask) {
@@ -300,7 +308,7 @@ GameState enter_location(char *location, Inventory *inventory, bool sweet_mode) 
             }
         } else if (is(loc, "quadrobics_base")) {
             say(loc, "quadrobics_move", sweet_mode);
-            say(loc, "quadrobics_hints", sweet_mode);
+            hint(loc, "quadrobics_hints", sweet_mode);
         } else if (is(loc, "alex_rivers_quadrobics")) {
             printf("You approach Alex Rivers, moving like a quadrobist.\n");
             printf("Alex is startled, drops their phone, and their recording is ruined.\n");
@@ -309,11 +317,11 @@ GameState enter_location(char *location, Inventory *inventory, bool sweet_mode) 
         } else if (is(loc, "scare_alex")) {
             say(loc, "scare_success", sweet_mode);
             say(loc, "scare_drop", sweet_mode);
-            say(loc, "scare_hints", sweet_mode);
+            hint(loc, "scare_hints", sweet_mode);
         } else if (is(loc, "phone_found")) {
             say(loc, "phone_run", sweet_mode);
             say(loc, "phone_what", sweet_mode);
-            say(loc, "phone_hints", sweet_mode);
+            hint(loc, "phone_hints", sweet_mode);
         } else if (is(loc, "roof")) {
             say(loc, "roof_jump", sweet_mode);
             printf("(Bad Ending)\n");
@@ -766,6 +774,118 @@ GameState process_command(const char *command, char *location, Inventory *invent
         return GAME_ENTER;
     }
     return GAME_CONTINUE;
+}
+
+// Название локации для строки статуса
+static const char *location_title(const char *location) {
+    static const char *titles[][2] = {
+        {"base", "Base of the CN Tower"}, {"alex_rivers", "Alex Rivers"},
+        {"Patrick", "Patrick"}, {"entrance", "Entrance"},
+        {"ticket_booth", "Ticket Booth"}, {"security", "Security Check"},
+        {"elevator", "Elevator"}, {"lookout", "LookOut Level"},
+        {"glass_floor", "Glass Floor"}, {"edgewalk_registration", "EdgeWalk Desk"},
+        {"edgewalk_preparation", "EdgeWalk Prep"}, {"edgewalk", "EdgeWalk"},
+        {"gift_shop", "Gift Shop"}, {"information_booth", "Info Booth"},
+        {"worker", "Worker"}, {"open_box", "Open Box"},
+        {"caught_stealing", "Caught!"}, {"storage_room", "Storage Room"},
+        {"just_a_chill_guy", "Just a Chill Guy"}, {"corner", "Corner"},
+        {"quadrobics_base", "Quadrobics"}, {"alex_rivers_quadrobics", "Alex Rivers"},
+        {"scare_alex", "Alex Rivers"}, {"phone_found", "Roof Edge"}, {"roof", "Roof"},
+    };
+    for (size_t i = 0; i < sizeof(titles) / sizeof(titles[0]); i++) {
+        if (is(titles[i][0], location)) return titles[i][1];
+    }
+    return location;
+}
+
+void format_status(char *buf, size_t size, const char *location, Inventory *inventory, bool sweet_mode) {
+    size_t len = 0;
+    bool first_item = true;
+
+    snprintf(buf, size, "CN Tower | %s | $%d", location_title(location), inventory->money);
+    for (int i = 0; valid_items[i] != NULL; i++) {
+        if (has_item(inventory, valid_items[i])) {
+            len = strlen(buf);
+            snprintf(buf + len, size - len, "%s%s", first_item ? " | Items: " : ", ", valid_items[i]);
+            first_item = false;
+        }
+    }
+    if (sweet_mode) {
+        len = strlen(buf);
+        snprintf(buf + len, size - len, " | Sweet+");
+    }
+}
+
+// Команды, которые работают в любой локации
+const char *global_commands[] = {
+    "Look", "Inventory", "Help", "Save", "Load", "Debug", "Restart", "Exit", NULL
+};
+
+// Действия, которые сейчас имеют смысл в локации: для подсказок и автодополнения по Tab
+int available_commands(const char *location, Inventory *inventory, const char **out, int max) {
+    const char *list[16];
+    int n = 0;
+    const char *loc = location;
+
+#define ADD(cmd) (list[n++] = (cmd))
+    if (is(loc, "base")) {
+        ADD("Go North"); ADD("Go East"); ADD("Go West");
+        if (!inventory->worker_task && !inventory->met_patrick) ADD("Go South");
+        ADD("Look Around");
+    } else if (is(loc, "alex_rivers")) {
+        ADD("Compliment Alex"); ADD("Ignore");
+    } else if (is(loc, "Patrick")) {
+        ADD("Join"); ADD("Decline"); ADD("Back");
+    } else if (is(loc, "entrance")) {
+        if (has_item(inventory, "ticket")) ADD("Go North");
+        ADD("Go West"); ADD("Back");
+    } else if (is(loc, "ticket_booth")) {
+        if (!has_item(inventory, "ticket")) ADD("Buy Ticket");
+        ADD("Back");
+    } else if (is(loc, "security")) {
+        if (has_item(inventory, "ticket")) ADD("Go North");
+        ADD("Back");
+    } else if (is(loc, "lookout")) {
+        ADD("Go Down"); ADD("Go East"); ADD("Go Back"); ADD("Look Around");
+    } else if (is(loc, "glass_floor")) {
+        ADD("Go Up"); ADD("Go West"); ADD("Go East"); ADD("Look Down");
+    } else if (is(loc, "edgewalk_registration")) {
+        if (has_item(inventory, "edgewalk_ticket")) ADD("Go North");
+        else ADD("Buy Ticket");
+        ADD("Back");
+    } else if (is(loc, "gift_shop")) {
+        ADD("Buy Postcards"); ADD("Buy Souvenir");
+        if (!has_item(inventory, "mask")) ADD("Buy Mask");
+        ADD("Back");
+    } else if (is(loc, "information_booth")) {
+        ADD("Ask About History"); ADD("Ask About Building");
+        if (has_item(inventory, "alex_phone") && !inventory->phone_returned) ADD("Return Phone");
+        ADD("Back");
+    } else if (is(loc, "worker")) {
+        ADD("Look Inside"); ADD("Continue"); ADD("Back");
+    } else if (is(loc, "open_box")) {
+        ADD("Take Nothing"); ADD("Take Money"); ADD("Take Book"); ADD("Take Mask");
+    } else if (is(loc, "caught_stealing")) {
+        ADD("Tell Truth"); ADD("Bribe"); ADD("Lie");
+    } else if (is(loc, "storage_room")) {
+        ADD("Back");
+    } else if (is(loc, "just_a_chill_guy")) {
+        if (has_item(inventory, "mask") && has_item(inventory, "bible")) ADD("Go West");
+        if (has_item(inventory, "mask")) ADD("Use Mask");
+        if (has_item(inventory, "bible")) ADD("Use Bible");
+        ADD("Go Forward"); ADD("Ask About Corner"); ADD("Back");
+    } else if (is(loc, "quadrobics_base")) {
+        ADD("Go West");
+    } else if (is(loc, "scare_alex")) {
+        ADD("Take Phone"); ADD("Leave Phone");
+    } else if (is(loc, "phone_found")) {
+        ADD("Jump"); ADD("Go Back");
+    }
+#undef ADD
+
+    if (n > max) n = max;
+    for (int i = 0; i < n; i++) out[i] = list[i];
+    return n;
 }
 
 // Работа с инвентарём

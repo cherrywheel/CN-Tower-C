@@ -13,7 +13,7 @@ all: cn_tower_game
 cn_tower_game: $(OBJS)
 	$(CC) $(LDFLAGS) -o $@ $^
 
-%.o: %.c ../include/game.h ../include/dialogues.h
+%.o: %.c ../include/game.h ../include/dialogues.h ../include/ui.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
 
 clean:
