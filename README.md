@@ -61,6 +61,55 @@ static so any distro works
 
 `cn_tower_game-<os>-x86_64` for `freebsd` `openbsd` `netbsd` `dragonflybsd` `solaris` `illumos` `haiku`
 
+### openwrt
+
+real packages for your router built with the official openwrt sdk
+
+`cn-tower-openwrt-<version>-<arch>` where version is `24.10` (ipk) or `25.12` (apk)
+
+| arch | routers |
+|---|---|
+| `mips_24kc` | ath79 like most old tp-links |
+| `mipsel_24kc` | ramips like mt7621 ones |
+| `aarch64_cortex-a53` | mediatek filogic and mt7622 |
+| `aarch64_generic` | arm64 boxes |
+| `arm_cortex-a7_neon-vfpv4` | ipq40xx |
+| `arm_cortex-a9_vfpv3-d16` | mvebu like the wrt ones |
+| `x86_64` | pc and vm installs |
+
+no idea which arch you have
+
+```
+grep ARCH /etc/openwrt_release
+```
+
+on 24.10
+
+```
+opkg install cn-tower-openwrt-24.10-mips_24kc.ipk
+cn-tower
+```
+
+on 25.12
+
+```
+apk add --allow-untrusted cn-tower-openwrt-25.12-mips_24kc.apk
+cn-tower
+```
+
+ci installs it for real in an openwrt rootfs for x86_64 mips_24kc aarch64_generic and arm_cortex-a9 and plays through to the win
+
+the rest only get built since theres no rootfs image for them
+
+to build it in your own sdk add the `openwrt` dir as a feed
+
+```
+echo "src-link cntower /path/to/CN-Tower-C/openwrt" >> feeds.conf
+./scripts/feeds update cntower
+./scripts/feeds install cn-tower
+make package/cn-tower/compile
+```
+
 ### webassembly
 
 `cn_tower_game-wasm32-wasi.wasm` runs anywhere with a wasi runtime
@@ -79,9 +128,23 @@ wasmtime --dir=. cn_tower_game-wasm32-wasi.wasm
 
 ### how its tested
 
-ci plays every build except windows on arm through to the win
+ci plays every build except windows on arm and a few openwrt ones through to the win
 
 linux ones run under qemu and bsd solaris and haiku ones run in real vms
+
+### why every arch
+
+a text adventure doesnt need a gpu or a fast cpu or even a real screen so theres no excuse for it not to run everywhere
+
+its plain c99 with zero dependencies so it doubles as a tiny canary for your setup
+
+if it wins the game then your compiler your libc your emulator and your weird box all work
+
+dig out whatever you have lying around an old router a raspberry pi a sparc from the closet an elbrus or a fresh loongson and play it
+
+porting a compiler or bringing up an emulator
+
+this is a small real program with a known good ending so use it to check your work
 
 ### windows on arm
 
@@ -110,6 +173,32 @@ xattr -d com.apple.quarantine cn_tower_game-macos-universal
 
 ## build
 
+the easy way is one script that finds or installs a c compiler builds the game and plays through to the win to prove it works
+
+anything unix like including linux macos bsd solaris haiku termux wsl and msys2
+
+```
+sh setup.sh
+```
+
+windows
+
+```
+setup.cmd
+```
+
+it asks before installing anything and `--yes` skips the questions
+
+it knows apt dnf yum pacman zypper apk xbps emerge eopkg swupd nix brew pkg pkg_add pkgin pkgman and winget
+
+on debian or ubuntu `sh setup.sh --cross` also installs every cross compiler and qemu that ci uses and plays through to the win on all 20 linux archs right on your machine
+
+loongarch64 needs zig for that so `pip install ziglang` first and `--out DIR` keeps all the binaries
+
+thats exactly what ci runs for linux
+
+### by hand
+
 windows from a developer command prompt
 
 ```
@@ -122,14 +211,6 @@ linux and macos
 ```
 cd src
 make
-```
-
-bsd solaris haiku or anything else with a c compiler
-
-this builds it with the system `cc` and plays through to the win to prove it works
-
-```
-sh tests/ci_build.sh
 ```
 
 plain c99 and posix (winapi on windows)

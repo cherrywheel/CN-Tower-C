@@ -23,3 +23,7 @@ src/cn_tower_game
 
 # ci test output
 win_output.txt
+
+# game sources copied next to the openwrt package in ci
+openwrt/cn-tower/src/
+openwrt/cn-tower/include/
