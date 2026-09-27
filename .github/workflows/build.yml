@@ -262,6 +262,36 @@ jobs:
         name: cn_tower_game-haiku-x86_64
         path: src/cn_tower_game
 
+  # elbrus e2k with mcst lcc from a private prerelease in this repo
+  build-elbrus:
+    runs-on: ubuntu-latest
+    env:
+      TOOLCHAIN_TAG: "67"
+      TOOLCHAIN_FILE: elbrus_cross_compiler_toolchain.zip
+      TOOLCHAIN_SHA256: ef0688b494bf6731e1dc8d70fa4d795e7270fb1ec2c6ad696453e677d309e884
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: download toolchain
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        mkdir -p "$RUNNER_TEMP/e2k"
+        gh release download "$TOOLCHAIN_TAG" -p "$TOOLCHAIN_FILE" -D "$RUNNER_TEMP/e2k"
+        echo "$TOOLCHAIN_SHA256  $RUNNER_TEMP/e2k/$TOOLCHAIN_FILE" | sha256sum -c
+
+    - name: look inside
+      run: |
+        cd "$RUNNER_TEMP/e2k"
+        unzip -q "$TOOLCHAIN_FILE"
+        rm "$TOOLCHAIN_FILE"
+        du -sh .
+        find . -maxdepth 4 -not -path '*/fs/*' | sort | head -200
+        for f in $(find . -maxdepth 4 \( -name 'setup.sh' -o -name 'README*' -o -name '*.sha512' -o -name 'SHA512*' \) -not -path '*/fs/*'); do
+          echo "=============== $f"
+          head -c 20000 "$f"
+        done
+
   # release on every push to main
   # windows linux and macos must pass while the vm builds ship if they made it
   release:
