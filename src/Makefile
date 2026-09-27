@@ -1,5 +1,5 @@
-# src/Makefile (nmake, MSVC)
-# На Linux/macOS GNU make берёт GNUmakefile.
+# src/Makefile for nmake and msvc
+# on linux and macos gnu make uses GNUmakefile instead
 
 CC = cl
 CFLAGS = /nologo /W4 /I..\include /D_CRT_SECURE_NO_WARNINGS /D_CRT_NONSTDC_NO_WARNINGS
@@ -11,7 +11,7 @@ all: cn_tower_game.exe
 cn_tower_game.exe: $(OBJS) cn_tower.res
 	$(CC) /nologo /Fe$@ $(OBJS) cn_tower.res
 
-# Иконка exe
+# exe icon
 cn_tower.res: cn_tower.rc ..\assets\cn_tower.ico
 	rc /nologo /fo cn_tower.res cn_tower.rc
 

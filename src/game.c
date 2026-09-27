@@ -2,7 +2,7 @@
 #include "dialogues.h"
 #include "ui.h"
 
-// Все локации игры (для проверки сохранений и меню отладки)
+// every location in the game used to check saves and by the debug menu
 static const char *locations[] = {
     "base", "alex_rivers", "Patrick", "entrance", "ticket_booth", "security",
     "elevator", "lookout", "glass_floor", "edgewalk_registration",
@@ -18,26 +18,26 @@ static const char *valid_items[] = {
     NULL
 };
 
-// Свой генератор случайных чисел: rand() на разных системах даёт разные
-// последовательности, а с этим один и тот же seed везде перемешивает одинаково
+// own rng since rand() gives different sequences on every platform
+// with this one the same seed shuffles the same everywhere
 static uint32_t random_state = 1;
 
 void game_seed(uint32_t seed) {
     random_state = seed;
 }
 
-// Случайное число от 0 до n - 1 (LCG из стандарта C)
+// random number from 0 to n - 1 using the lcg from the c standard
 static int random_below(int n) {
     random_state = random_state * 1103515245u + 12345u;
     return (int)((random_state >> 16) & 0x7fff) % n;
 }
 
-// Вывести одну реплику локации
+// print one line of dialogue for a location
 static void say(const char *location, const char *key, bool sweet_mode) {
     printf("%s\n", get_dialogue(location, key, sweet_mode));
 }
 
-// Строка "Hints: ..." нужна только в обычном режиме, в TUI подсказки внизу экрана
+// the "Hints: ..." line is only for plain mode since the tui shows hints at the bottom
 static void hint(const char *location, const char *key, bool sweet_mode) {
     if (!ui_active()) say(location, key, sweet_mode);
 }
@@ -63,7 +63,7 @@ void new_game(char *location, Inventory *inventory) {
     inventory->money = STARTING_MONEY;
 }
 
-// Списать деньги, если их хватает
+// take the money if theres enough
 static bool pay(Inventory *inventory, int price) {
     if (inventory->money < price) {
         printf("Not enough money.\n");
@@ -73,7 +73,7 @@ static bool pay(Inventory *inventory, int price) {
     return true;
 }
 
-// Вторая встреча с Алексом: выбрать два способа поддержать
+// second meeting with alex where you pick two ways to support them
 static void support_alex(Inventory *inventory, bool sweet_mode) {
     const char *loc = "alex_rivers";
     const char *options[] = {
@@ -88,7 +88,7 @@ static void support_alex(Inventory *inventory, bool sweet_mode) {
     const char *choices[2] = {NULL, NULL};
     int num_choices = 0;
 
-    // Перемешать варианты (Фишер-Йетс)
+    // shuffle the options with fisher yates
     for (int i = num_options - 1; i > 0; i--) {
         int j = random_below(i + 1);
         const char *tmp = options[i];
@@ -105,7 +105,7 @@ static void support_alex(Inventory *inventory, bool sweet_mode) {
         printf("Enter choice %d: ", num_choices + 1);
         char *input = get_player_input();
         if (input == NULL) {
-            break; // Ввод закончился
+            break; // end of input
         }
         int choice = 0;
         if (sscanf(input, "%d", &choice) == 1 && choice >= 1 && choice <= num_options) {
@@ -134,14 +134,14 @@ static void support_alex(Inventory *inventory, bool sweet_mode) {
     }
 }
 
-// Вывести текущую локацию и запустить то, что происходит при входе.
-// Некоторые локации - просто сцены, которые сами ведут дальше,
-// а некоторые - концовки.
+// print the current location and run whatever happens when you arrive
+// some locations are just scenes that move you on by themselves
+// and some are endings
 GameState enter_location(char *location, Inventory *inventory, bool sweet_mode) {
     printf("\n---\n");
 
     for (;;) {
-        const char *next = NULL; // Автоматический переход в другую локацию
+        const char *next = NULL; // automatic move to another location
         bool ending = false;
         const char *loc = location;
 
@@ -278,7 +278,7 @@ GameState enter_location(char *location, Inventory *inventory, bool sweet_mode) 
             hint(loc, "caught_hints", sweet_mode);
         } else if (is(loc, "storage_room")) {
             say(loc, "storage_thanks", sweet_mode);
-            if (!inventory->worker_task) { // Платят только один раз
+            if (!inventory->worker_task) { // only paid once
                 say(loc, "storage_reward", sweet_mode);
                 say(loc, "storage_money", sweet_mode);
                 inventory->money += 20;
@@ -367,14 +367,14 @@ static void display_help(bool sweet_mode) {
     say("any", "help5", sweet_mode);
 }
 
-// Прочитать строку в меню отладки (NULL, если ввод закончился)
+// read a line in the debug menu or NULL at end of input
 static char *debug_input(const char *prompt) {
     printf("%s", prompt);
     return get_player_input();
 }
 
-// Скрытое меню отладки, как в Python-версии.
-// Возвращает GAME_ENTER, если локация сменилась, иначе GAME_CONTINUE.
+// hidden debug menu same as the python version
+// returns GAME_ENTER if the location changed and GAME_CONTINUE otherwise
 static GameState debug_menu(char *location, Inventory *inventory, bool *sweet_mode) {
     for (;;) {
         printf("\n--- Debug Menu ---\n");
@@ -431,7 +431,7 @@ static GameState debug_menu(char *location, Inventory *inventory, bool *sweet_mo
             printf("\n");
             char *new_location = debug_input("Enter the location to set: ");
             if (new_location != NULL && is(new_location, "patrick")) {
-                new_location[0] = 'P'; // Ввод в нижнем регистре, а имя локации - нет
+                new_location[0] = 'P'; // input is lowercased but this location name isnt
             }
             if (new_location != NULL && is_valid_location(new_location)) {
                 set_location(location, new_location);
@@ -457,13 +457,13 @@ static GameState debug_menu(char *location, Inventory *inventory, bool *sweet_mo
     }
 }
 
-// Обработать команду игрока (уже в нижнем регистре и без лишних пробелов).
+// handle one command from the player already lowercased and trimmed
 GameState process_command(const char *command, char *location, Inventory *inventory, bool *sweet_mode) {
     const char *loc = location;
     const bool sweet = *sweet_mode;
     const char *new_location = NULL;
 
-    // --- Команды, которые работают везде ---
+    // --- commands that work everywhere ---
     if (is(command, "")) {
         return GAME_CONTINUE;
     } else if (is(command, "exit") || is(command, "quit")) {
@@ -487,7 +487,7 @@ GameState process_command(const char *command, char *location, Inventory *invent
         return debug_menu(location, inventory, sweet_mode);
     }
 
-    // --- Команды локаций ---
+    // --- location commands ---
     if (is(loc, "base")) {
         if (is(command, "go north")) {
             new_location = "entrance";
@@ -790,7 +790,7 @@ GameState process_command(const char *command, char *location, Inventory *invent
     return GAME_CONTINUE;
 }
 
-// Название локации для строки статуса
+// location name for the status line
 static const char *location_title(const char *location) {
     static const char *titles[][2] = {
         {"base", "Base of the CN Tower"}, {"alex_rivers", "Alex Rivers"},
@@ -830,12 +830,12 @@ void format_status(char *buf, size_t size, const char *location, Inventory *inve
     }
 }
 
-// Команды, которые работают в любой локации
+// commands that work in any location
 const char *global_commands[] = {
     "Look", "Inventory", "Help", "Save", "Load", "Debug", "Restart", "Exit", NULL
 };
 
-// Действия, которые сейчас имеют смысл в локации: для подсказок и автодополнения по Tab
+// actions that make sense right now used for hints and tab completion
 int available_commands(const char *location, Inventory *inventory, const char **out, int max) {
     const char *list[16];
     int n = 0;
@@ -902,7 +902,7 @@ int available_commands(const char *location, Inventory *inventory, const char **
     return n;
 }
 
-// Работа с инвентарём
+// inventory
 static bool *item_flag(Inventory *inventory, const char *item) {
     if (is(item, "ticket")) return &inventory->ticket;
     if (is(item, "mask")) return &inventory->mask;
@@ -911,7 +911,7 @@ static bool *item_flag(Inventory *inventory, const char *item) {
     if (is(item, "souvenir")) return &inventory->souvenir;
     if (is(item, "bible")) return &inventory->bible;
     if (is(item, "alex_phone")) return &inventory->alex_phone;
-    return NULL; // Нет такого предмета
+    return NULL; // no such item
 }
 
 bool has_item(Inventory *inventory, const char *item) {

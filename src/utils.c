@@ -7,10 +7,10 @@
 #define S_ISDIR(mode) (((mode) & S_IFMT) == S_IFDIR)
 #endif
 
-#define SAVE_MAGIC "CNT2" // Менять при изменении формата сохранения
+#define SAVE_MAGIC "CNT2" // bump when the save layout changes
 
-// Путь к файлу данных: в ../data, если игра запущена из src,
-// иначе рядом с тем местом, откуда её запустили (например, из релиза)
+// data file path
+// ../data when run from src and the current dir otherwise like a release build
 const char *data_file(const char *name) {
     static char path[256];
     struct stat st;
@@ -19,7 +19,7 @@ const char *data_file(const char *name) {
     return path;
 }
 
-// Простое сохранение/загрузка (без JSON, бинарный файл)
+// simple save and load with a plain binary file no json
 void save_game(const char *location, Inventory *inventory, const char *filename) {
     FILE *file = fopen(filename, "wb");
     if (file == NULL) {
@@ -27,7 +27,7 @@ void save_game(const char *location, Inventory *inventory, const char *filename)
         return;
     }
 
-    // Локация (буфер фиксированного размера для простоты)
+    // location in a fixed size buffer to keep it simple
     char loc_buffer[LOCATION_SIZE] = {0};
     snprintf(loc_buffer, sizeof(loc_buffer), "%s", location);
 
@@ -39,7 +39,7 @@ void save_game(const char *location, Inventory *inventory, const char *filename)
     printf(ok ? "Game saved.\n" : "Error saving game.\n");
 }
 
-// Загрузка игры. При ошибке ничего не меняется.
+// load the game and change nothing if it fails
 bool load_game(char *location, Inventory *inventory, const char *filename) {
     FILE *file = fopen(filename, "rb");
     if (file == NULL) {
@@ -71,7 +71,7 @@ bool load_game(char *location, Inventory *inventory, const char *filename) {
     return true;
 }
 
-// Возвращает сохранённый возраст или -1, если его нет
+// saved age or -1 if there is none
 int load_age(const char *filename) {
     FILE *file = fopen(filename, "r");
     int age = -1;
@@ -88,39 +88,39 @@ int load_age(const char *filename) {
 void save_age(int age, const char *filename) {
     FILE *file = fopen(filename, "w");
     if (file == NULL) {
-        return; // Не страшно, в следующий раз спросим снова
+        return; // no big deal we just ask again next time
     }
     fprintf(file, "%d\n", age);
     fclose(file);
 }
 
-// Убрать пробелы в начале и конце строки
+// trim whitespace on both ends
 char *trim_whitespace(char *str) {
     char *end;
 
-    // Пробелы в начале
+    // leading spaces
     while(isspace((unsigned char)*str)) str++;
 
-    if(*str == 0)  // Одни пробелы?
+    if(*str == 0)  // all spaces
         return str;
 
-    // Пробелы в конце
+    // trailing spaces
     end = str + strlen(str) - 1;
     while(end > str && isspace((unsigned char)*end)) end--;
 
-    // Новый конец строки
+    // new end of string
     end[1] = '\0';
 
     return str;
 }
 
-// Прочитать строку игрока: без крайних пробелов, в нижнем регистре, с одиночными пробелами.
-// Возвращает строку из malloc (освобождает вызывающий) или NULL, если ввод закончился.
+// read a line from the player trimmed lowercased with single spaces
+// returns a malloc'd string the caller frees or NULL at end of input
 char *get_player_input(void) {
-    char *input = malloc(INPUT_SIZE); // Память под ввод
+    char *input = malloc(INPUT_SIZE); // buffer for the input
     if (input == NULL) {
         perror("Memory allocation failed");
-        exit(EXIT_FAILURE); // Выходим, если память не выделилась
+        exit(EXIT_FAILURE); // bail out if malloc fails
     }
 
     fflush(stdout);
@@ -130,20 +130,20 @@ char *get_player_input(void) {
             return NULL;
         }
     } else {
-        ui_set_hints(NULL, 0, 0); // Подсказки действуют на одно чтение
+        ui_set_hints(NULL, 0, 0); // hints only last for one read
         if (fgets(input, INPUT_SIZE, stdin) == NULL) {
-            free(input); // Освобождаем память, если fgets не сработал
+            free(input); // free the buffer if fgets fails
             return NULL;
         }
 
-        // Отбросить хвост слишком длинной строки
+        // drop the rest of a line thats too long
         if (strchr(input, '\n') == NULL) {
             int c;
             while ((c = getchar()) != '\n' && c != EOF) {}
         }
     }
 
-    // Пишем результат в начало буфера, чтобы его можно было освободить
+    // write into the start of the buffer so it can still be freed
     char *src = trim_whitespace(input);
     char *dst = input;
     bool prev_space = false;
