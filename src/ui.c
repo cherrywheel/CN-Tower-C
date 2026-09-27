@@ -1,6 +1,15 @@
-#ifndef _WIN32
-#define _POSIX_C_SOURCE 200809L // for fileno isatty and termios
+// feature macros only where needed since on the bsds _POSIX_C_SOURCE hides struct winsize
+#if defined(__linux__)
+#define _POSIX_C_SOURCE 200809L // glibc in c99 mode needs it for fileno isatty and termios
+#elif defined(__APPLE__)
 #define _DARWIN_C_SOURCE        // macos hides struct winsize and TIOCGWINSZ without this
+#elif defined(__sun)
+#define __EXTENSIONS__          // same on solaris and illumos
+#endif
+
+// wasi has no terminal at all so the game always runs in plain mode there
+#if defined(__wasi__)
+#define UI_NO_TERMINAL
 #endif
 
 #include "ui.h"
@@ -17,7 +26,7 @@
 #ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
 #define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
 #endif
-#else
+#elif !defined(UI_NO_TERMINAL)
 #include <termios.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
@@ -53,7 +62,7 @@ static HANDLE in_handle;
 static DWORD saved_out_mode;
 static DWORD saved_in_mode;
 static bool in_mode_saved = false;
-#else
+#elif !defined(UI_NO_TERMINAL)
 static struct termios saved_termios;
 #endif
 
@@ -84,7 +93,7 @@ static void get_screen_size(int *rows, int *cols) {
         *rows = info.srWindow.Bottom - info.srWindow.Top + 1;
         *cols = info.srWindow.Right - info.srWindow.Left + 1;
     }
-#else
+#elif !defined(UI_NO_TERMINAL)
     struct winsize ws;
     if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_row > 0 && ws.ws_col > 0) {
         *rows = ws.ws_row;
@@ -107,6 +116,8 @@ static int read_key(void) {
         }
     }
     return c;
+#elif defined(UI_NO_TERMINAL)
+    return -1;
 #else
     unsigned char c;
     if (read(STDIN_FILENO, &c, 1) != 1) return -1;
@@ -143,7 +154,7 @@ static void restore_terminal(void) {
 #ifdef _WIN32
     SetConsoleMode(out_handle, saved_out_mode);
     if (in_mode_saved) SetConsoleMode(in_handle, saved_in_mode);
-#else
+#elif !defined(UI_NO_TERMINAL)
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &saved_termios);
 #endif
 }
@@ -164,6 +175,8 @@ void ui_init(bool allow_tui) {
         in_mode_saved = true;
         SetConsoleMode(in_handle, saved_in_mode & ~(DWORD)ENABLE_PROCESSED_INPUT);
     }
+#elif defined(UI_NO_TERMINAL)
+    return;
 #else
     if (!isatty(STDIN_FILENO) || !isatty(STDOUT_FILENO)) return;
     const char *term = getenv("TERM");

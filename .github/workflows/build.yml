@@ -57,30 +57,26 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - arch: x86_64
-            triple: x86_64-linux-gnu
-            libc: ""
-            qemu: ""
-          - arch: aarch64 # baikal-m too
-            triple: aarch64-linux-gnu
-            libc: libc6-dev-arm64-cross
-            qemu: qemu-aarch64
-          - arch: armhf
-            triple: arm-linux-gnueabihf
-            libc: libc6-dev-armhf-cross
-            qemu: qemu-arm
-          - arch: i686
-            triple: i686-linux-gnu
-            libc: libc6-dev-i386-cross
-            qemu: qemu-i386
-          - arch: riscv64
-            triple: riscv64-linux-gnu
-            libc: libc6-dev-riscv64-cross
-            qemu: qemu-riscv64
-          - arch: mipsel # baikal-t1
-            triple: mipsel-linux-gnu
-            libc: libc6-dev-mipsel-cross
-            qemu: qemu-mipsel
+          - { arch: x86_64,      cc: gcc,                             pkgs: "",                                                         qemu: "" }
+          - { arch: i686,        cc: i686-linux-gnu-gcc,              pkgs: "gcc-i686-linux-gnu libc6-dev-i386-cross",                  qemu: qemu-i386 }
+          - { arch: aarch64,     cc: aarch64-linux-gnu-gcc,           pkgs: "gcc-aarch64-linux-gnu libc6-dev-arm64-cross",              qemu: qemu-aarch64 }
+          - { arch: armhf,       cc: arm-linux-gnueabihf-gcc,         pkgs: "gcc-arm-linux-gnueabihf libc6-dev-armhf-cross",            qemu: qemu-arm }
+          - { arch: armel,       cc: arm-linux-gnueabi-gcc,           pkgs: "gcc-arm-linux-gnueabi libc6-dev-armel-cross",              qemu: qemu-arm }
+          - { arch: riscv64,     cc: riscv64-linux-gnu-gcc,           pkgs: "gcc-riscv64-linux-gnu libc6-dev-riscv64-cross",            qemu: qemu-riscv64 }
+          - { arch: loongarch64, cc: "python3 -m ziglang cc -target loongarch64-linux-musl", pkgs: "",                                  qemu: qemu-loongarch64, zig: true }
+          - { arch: mipsel,      cc: mipsel-linux-gnu-gcc,            pkgs: "gcc-mipsel-linux-gnu libc6-dev-mipsel-cross",              qemu: qemu-mipsel }
+          - { arch: mips,        cc: mips-linux-gnu-gcc,              pkgs: "gcc-mips-linux-gnu libc6-dev-mips-cross",                  qemu: qemu-mips }
+          - { arch: mips64el,    cc: mips64el-linux-gnuabi64-gcc,     pkgs: "gcc-mips64el-linux-gnuabi64 libc6-dev-mips64el-cross",     qemu: qemu-mips64el }
+          - { arch: mips64,      cc: mips64-linux-gnuabi64-gcc,       pkgs: "gcc-mips64-linux-gnuabi64 libc6-dev-mips64-cross",         qemu: qemu-mips64 }
+          - { arch: ppc64le,     cc: powerpc64le-linux-gnu-gcc,       pkgs: "gcc-powerpc64le-linux-gnu libc6-dev-ppc64el-cross",        qemu: qemu-ppc64le }
+          - { arch: ppc64,       cc: powerpc64-linux-gnu-gcc,         pkgs: "gcc-powerpc64-linux-gnu libc6-dev-ppc64-cross",            qemu: qemu-ppc64 }
+          - { arch: powerpc,     cc: powerpc-linux-gnu-gcc,           pkgs: "gcc-powerpc-linux-gnu libc6-dev-powerpc-cross",            qemu: qemu-ppc }
+          - { arch: s390x,       cc: s390x-linux-gnu-gcc,             pkgs: "gcc-s390x-linux-gnu libc6-dev-s390x-cross",                qemu: qemu-s390x }
+          - { arch: sparc64,     cc: sparc64-linux-gnu-gcc,           pkgs: "gcc-sparc64-linux-gnu libc6-dev-sparc64-cross",            qemu: qemu-sparc64 }
+          - { arch: alpha,       cc: alpha-linux-gnu-gcc,             pkgs: "gcc-alpha-linux-gnu libc6-dev-alpha-cross",                qemu: qemu-alpha }
+          - { arch: hppa,        cc: hppa-linux-gnu-gcc,              pkgs: "gcc-hppa-linux-gnu libc6-dev-hppa-cross",                  qemu: qemu-hppa }
+          - { arch: m68k,        cc: m68k-linux-gnu-gcc,              pkgs: "gcc-m68k-linux-gnu libc6-dev-m68k-cross",                  qemu: qemu-m68k }
+          - { arch: sh4,         cc: sh4-linux-gnu-gcc,               pkgs: "gcc-sh4-linux-gnu libc6-dev-sh4-cross",                    qemu: qemu-sh4 }
 
     steps:
     - uses: actions/checkout@v6
@@ -89,10 +85,15 @@ jobs:
       if: matrix.qemu != ''
       run: |
         sudo apt-get update -qq
-        sudo apt-get install -y -qq --no-install-recommends gcc-${{ matrix.triple }} ${{ matrix.libc }} qemu-user
+        sudo apt-get install -y -qq --no-install-recommends ${{ matrix.pkgs }} qemu-user
+
+    # zig from pypi since setup-zig still runs on node 20
+    - name: install zig
+      if: matrix.zig
+      run: pip install ziglang
 
     - name: build with make
-      run: make -C src CC=${{ matrix.triple }}-gcc CFLAGS="-std=c99 -Wall -Wextra -pedantic -Werror -O2" LDFLAGS="-static"
+      run: make -C src CC="${{ matrix.cc }}" CFLAGS="-std=c99 -Wall -Wextra -pedantic -Werror -O2" LDFLAGS="-static"
 
     - name: play through to the win
       run: |
@@ -132,10 +133,140 @@ jobs:
         name: cn_tower_game-macos-universal
         path: src/cn_tower_game
 
-  # release on every push to main once all builds pass
+  # webassembly for wasmtime wasmer and friends
+  build-wasm:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: install zig and wasmtime
+      run: |
+        pip install ziglang
+        curl -sSf https://wasmtime.dev/install.sh | bash
+        echo "$HOME/.wasmtime/bin" >> "$GITHUB_PATH"
+
+    - name: build with make
+      run: make -C src CC="python3 -m ziglang cc -target wasm32-wasi" CFLAGS="-std=c99 -Wall -Wextra -pedantic -Werror -O2"
+
+    - name: play through to the win
+      run: |
+        cd src
+        wasmtime run --env CN_TOWER_SEED=1 cn_tower_game < ../tests/win_path.txt > ../win_output.txt
+        grep -F "(Win)" ../win_output.txt || { cat ../win_output.txt; exit 1; }
+
+    - name: upload module
+      uses: actions/upload-artifact@v7
+      with:
+        name: cn_tower_game-wasm32-wasi
+        path: src/cn_tower_game
+
+  # native builds inside vms and each one plays through to the win
+  build-freebsd:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+    - name: build and play in freebsd
+      uses: vmactions/freebsd-vm@v1
+      with:
+        usesh: true
+        run: sh tests/ci_build.sh
+    - uses: actions/upload-artifact@v7
+      with:
+        name: cn_tower_game-freebsd-x86_64
+        path: src/cn_tower_game
+
+  build-openbsd:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+    - name: build and play in openbsd
+      uses: vmactions/openbsd-vm@v1
+      with:
+        usesh: true
+        run: sh tests/ci_build.sh
+    - uses: actions/upload-artifact@v7
+      with:
+        name: cn_tower_game-openbsd-x86_64
+        path: src/cn_tower_game
+
+  build-netbsd:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+    - name: build and play in netbsd
+      uses: vmactions/netbsd-vm@v1
+      with:
+        usesh: true
+        run: sh tests/ci_build.sh
+    - uses: actions/upload-artifact@v7
+      with:
+        name: cn_tower_game-netbsd-x86_64
+        path: src/cn_tower_game
+
+  build-dragonflybsd:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+    - name: build and play in dragonfly bsd
+      uses: vmactions/dragonflybsd-vm@v1
+      with:
+        usesh: true
+        run: sh tests/ci_build.sh
+    - uses: actions/upload-artifact@v7
+      with:
+        name: cn_tower_game-dragonflybsd-x86_64
+        path: src/cn_tower_game
+
+  build-solaris:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+    - name: build and play in solaris
+      uses: vmactions/solaris-vm@v1
+      with:
+        usesh: true
+        prepare: pkg install -q developer/gcc || true
+        run: sh tests/ci_build.sh
+    - uses: actions/upload-artifact@v7
+      with:
+        name: cn_tower_game-solaris-x86_64
+        path: src/cn_tower_game
+
+  build-illumos:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+    - name: build and play in omnios
+      uses: vmactions/omnios-vm@v1
+      with:
+        usesh: true
+        prepare: pkg install -q build-essential || true
+        run: sh tests/ci_build.sh
+    - uses: actions/upload-artifact@v7
+      with:
+        name: cn_tower_game-illumos-x86_64
+        path: src/cn_tower_game
+
+  build-haiku:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+    - name: build and play in haiku
+      uses: vmactions/haiku-vm@v1
+      with:
+        usesh: true
+        run: sh tests/ci_build.sh
+    - uses: actions/upload-artifact@v7
+      with:
+        name: cn_tower_game-haiku-x86_64
+        path: src/cn_tower_game
+
+  # release on every push to main
+  # windows linux and macos must pass while the vm builds ship if they made it
   release:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [ build-windows, build-linux, build-macos ]
+    if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build-windows.result == 'success' && needs.build-linux.result == 'success' && needs.build-macos.result == 'success' }}
+    needs: [ build-windows, build-linux, build-macos, build-wasm, build-freebsd, build-openbsd, build-netbsd, build-dragonflybsd, build-solaris, build-illumos, build-haiku ]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -155,6 +286,7 @@ jobs:
           name=$(basename "$dir")
           case "$name" in
             *windows*) cp "$dir/cn_tower_game.exe" "release/$name.exe" ;;
+            *wasi*)    cp "$dir/cn_tower_game" "release/$name.wasm" ;;
             *)         cp "$dir/cn_tower_game" "release/$name" ;;
           esac
         done
