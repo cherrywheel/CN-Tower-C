@@ -61,6 +61,55 @@ static so any distro works
 
 `cn_tower_game-<os>-x86_64` for `freebsd` `openbsd` `netbsd` `dragonflybsd` `solaris` `illumos` `haiku`
 
+### openwrt
+
+real packages for your router built with the official openwrt sdk
+
+`cn-tower-openwrt-<version>-<arch>` where version is `24.10` (ipk) or `25.12` (apk)
+
+| arch | routers |
+|---|---|
+| `mips_24kc` | ath79 like most old tp-links |
+| `mipsel_24kc` | ramips like mt7621 ones |
+| `aarch64_cortex-a53` | mediatek filogic and mt7622 |
+| `aarch64_generic` | arm64 boxes |
+| `arm_cortex-a7_neon-vfpv4` | ipq40xx |
+| `arm_cortex-a9_vfpv3-d16` | mvebu like the wrt ones |
+| `x86_64` | pc and vm installs |
+
+no idea which arch you have
+
+```
+grep ARCH /etc/openwrt_release
+```
+
+on 24.10
+
+```
+opkg install cn-tower-openwrt-24.10-mips_24kc.ipk
+cn-tower
+```
+
+on 25.12
+
+```
+apk add --allow-untrusted cn-tower-openwrt-25.12-mips_24kc.apk
+cn-tower
+```
+
+ci installs it for real in an openwrt rootfs for x86_64 mips_24kc aarch64_generic and arm_cortex-a9 and plays through to the win
+
+the rest only get built since theres no rootfs image for them
+
+to build it in your own sdk add the `openwrt` dir as a feed
+
+```
+echo "src-link cntower /path/to/CN-Tower-C/openwrt" >> feeds.conf
+./scripts/feeds update cntower
+./scripts/feeds install cn-tower
+make package/cn-tower/compile
+```
+
 ### webassembly
 
 `cn_tower_game-wasm32-wasi.wasm` runs anywhere with a wasi runtime
@@ -79,7 +128,7 @@ wasmtime --dir=. cn_tower_game-wasm32-wasi.wasm
 
 ### how its tested
 
-ci plays every build except windows on arm through to the win
+ci plays every build except windows on arm and a few openwrt ones through to the win
 
 linux ones run under qemu and bsd solaris and haiku ones run in real vms
 

@@ -310,11 +310,81 @@ jobs:
         name: cn_tower_game-linux-e2k
         path: src/cn_tower_game
 
+  # openwrt packages built with the official sdk
+  # ipk for 24.10 and apk for 25.12 and where theres an openwrt rootfs image
+  # the package gets installed with opkg or apk and played through to the win
+  build-openwrt:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [ x86_64, mips_24kc, mipsel_24kc, aarch64_cortex-a53, aarch64_generic, arm_cortex-a7_neon-vfpv4, arm_cortex-a9_vfpv3-d16 ]
+        openwrt:
+          - { version: 24.10.8, series: "24.10", ext: ipk }
+          - { version: 25.12.5, series: "25.12", ext: apk }
+        include:
+          - { arch: x86_64,                  test: true }
+          - { arch: mips_24kc,               test: true }
+          - { arch: aarch64_generic,         test: true }
+          - { arch: arm_cortex-a9_vfpv3-d16, test: true }
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: copy the game sources into the package
+      run: cp -r src include openwrt/cn-tower/
+
+    - name: build with the openwrt sdk
+      uses: openwrt/gh-action-sdk@v11
+      env:
+        ARCH: ${{ matrix.arch }}-${{ matrix.openwrt.version }}
+        FEED_DIR: ${{ github.workspace }}/openwrt
+        FEEDNAME: cntower
+        PACKAGES: cn-tower
+        NO_DEFAULT_FEEDS: 1
+
+    - name: find the package
+      run: |
+        pkg=$(find bin/packages -name "cn-tower*.${{ matrix.openwrt.ext }}" | head -n 1)
+        if [ -z "$pkg" ]; then
+          find bin -type f
+          exit 1
+        fi
+        mkdir -p openwrt-test
+        cp "$pkg" "openwrt-test/cn-tower.${{ matrix.openwrt.ext }}"
+        cp tests/win_path.txt openwrt-test/
+        ls -la openwrt-test
+
+    - name: set up qemu for the openwrt rootfs
+      if: matrix.test
+      uses: docker/setup-qemu-action@v4
+
+    - name: install and play through to the win in openwrt
+      if: matrix.test
+      run: |
+        docker run --rm -v "$PWD/openwrt-test:/test" "openwrt/rootfs:${{ matrix.arch }}-${{ matrix.openwrt.version }}" /bin/sh -c '
+          set -e
+          if [ -f /test/cn-tower.apk ]; then
+            apk add --allow-untrusted /test/cn-tower.apk
+          else
+            opkg install /test/cn-tower.ipk
+          fi
+          cd /tmp
+          CN_TOWER_SEED=1 cn-tower < /test/win_path.txt > /test/win_output.txt
+        '
+        grep -F "(Win)" openwrt-test/win_output.txt || { cat openwrt-test/win_output.txt; exit 1; }
+
+    - name: upload package
+      uses: actions/upload-artifact@v7
+      with:
+        name: cn-tower-openwrt-${{ matrix.openwrt.series }}-${{ matrix.arch }}
+        path: openwrt-test/cn-tower.${{ matrix.openwrt.ext }}
+
   # release on every push to main
-  # windows linux and macos must pass while the vm and elbrus builds ship if they made it
+  # windows linux and macos must pass while the vm elbrus and openwrt builds ship if they made it
   release:
     if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build-windows.result == 'success' && needs.build-linux.result == 'success' && needs.build-macos.result == 'success' }}
-    needs: [ build-windows, build-linux, build-macos, build-elbrus, build-wasm, build-freebsd, build-openbsd, build-netbsd, build-dragonflybsd, build-solaris, build-illumos, build-haiku ]
+    needs: [ build-windows, build-linux, build-macos, build-elbrus, build-openwrt, build-wasm, build-freebsd, build-openbsd, build-netbsd, build-dragonflybsd, build-solaris, build-illumos, build-haiku ]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -335,6 +405,7 @@ jobs:
           case "$name" in
             *windows*) cp "$dir/cn_tower_game.exe" "release/$name.exe" ;;
             *wasi*)    cp "$dir/cn_tower_game" "release/$name.wasm" ;;
+            *openwrt*) for f in "$dir"/cn-tower.*; do cp "$f" "release/$name.${f##*.}"; done ;;
             *)         cp "$dir/cn_tower_game" "release/$name" ;;
           esac
         done
