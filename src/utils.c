@@ -1,16 +1,8 @@
-#define _WIN32
 #include "game.h"
 
-// Cross-platform clear screen
-void clear_console() {
-#ifdef _WIN32
-    system("cls");
-#else
-    system("clear");
-#endif
-}
+#define SAVE_MAGIC "CNT2" // Менять при изменении формата сохранения
 
-// Simplified save/load (no JSON, just a binary file)
+// Простое сохранение/загрузка (без JSON, бинарный файл)
 void save_game(const char *location, Inventory *inventory, const char *filename) {
     FILE *file = fopen(filename, "wb");
     if (file == NULL) {
@@ -18,80 +10,128 @@ void save_game(const char *location, Inventory *inventory, const char *filename)
         return;
     }
 
-    // Save location (fixed-size buffer for simplicity)
-    char loc_buffer[50];
-    strncpy(loc_buffer, location, sizeof(loc_buffer) - 1);
-    loc_buffer[sizeof(loc_buffer) - 1] = '\0'; // Ensure null termination
-    fwrite(loc_buffer, sizeof(loc_buffer), 1, file);
+    // Локация (буфер фиксированного размера для простоты)
+    char loc_buffer[LOCATION_SIZE] = {0};
+    snprintf(loc_buffer, sizeof(loc_buffer), "%s", location);
 
-    // Save inventory
-    fwrite(inventory, sizeof(Inventory), 1, file);
+    bool ok = fwrite(SAVE_MAGIC, 4, 1, file) == 1
+           && fwrite(loc_buffer, sizeof(loc_buffer), 1, file) == 1
+           && fwrite(inventory, sizeof(Inventory), 1, file) == 1;
 
-    fclose(file);
-    printf("Game saved.\n");
+    if (fclose(file) != 0) ok = false;
+    printf(ok ? "Game saved.\n" : "Error saving game.\n");
 }
 
-// Load game (and handle potential errors)
+// Загрузка игры. При ошибке ничего не меняется.
 bool load_game(char *location, Inventory *inventory, const char *filename) {
     FILE *file = fopen(filename, "rb");
     if (file == NULL) {
-        printf("No saved game found. Starting new game.\n");
-        return false; // Indicate load failure
-    }
-
-    // Load location
-    char loc_buffer[50];
-    if (fread(loc_buffer, sizeof(loc_buffer), 1, file) != 1) {
-        perror("Error loading location");
-        fclose(file);
-        return false;
-    }
-    strcpy(location, loc_buffer); // Copy back to location
-
-    // Load inventory
-    if (fread(inventory, sizeof(Inventory), 1, file) != 1) {
-        perror("Error loading inventory");
-        fclose(file);
+        printf("No saved game found.\n");
         return false;
     }
 
+    char magic[4];
+    char loc_buffer[LOCATION_SIZE];
+    Inventory loaded;
+    bool ok = fread(magic, sizeof(magic), 1, file) == 1
+           && memcmp(magic, SAVE_MAGIC, sizeof(magic)) == 0
+           && fread(loc_buffer, sizeof(loc_buffer), 1, file) == 1
+           && fread(&loaded, sizeof(loaded), 1, file) == 1;
     fclose(file);
+
+    if (ok) {
+        loc_buffer[sizeof(loc_buffer) - 1] = '\0';
+        ok = is_valid_location(loc_buffer);
+    }
+    if (!ok) {
+        printf("The saved game is damaged or from an old version.\n");
+        return false;
+    }
+
+    snprintf(location, LOCATION_SIZE, "%s", loc_buffer);
+    *inventory = loaded;
     printf("Game loaded.\n");
-    return true; // Indicate load success
+    return true;
 }
 
-// Helper function to trim leading/trailing whitespace from a string
+// Возвращает сохранённый возраст или -1, если его нет
+int load_age(const char *filename) {
+    FILE *file = fopen(filename, "r");
+    int age = -1;
+    if (file == NULL) {
+        return -1;
+    }
+    if (fscanf(file, "%d", &age) != 1) {
+        age = -1;
+    }
+    fclose(file);
+    return age;
+}
+
+void save_age(int age, const char *filename) {
+    FILE *file = fopen(filename, "w");
+    if (file == NULL) {
+        return; // Не страшно, в следующий раз спросим снова
+    }
+    fprintf(file, "%d\n", age);
+    fclose(file);
+}
+
+// Убрать пробелы в начале и конце строки
 char *trim_whitespace(char *str) {
     char *end;
 
-    // Trim leading space
+    // Пробелы в начале
     while(isspace((unsigned char)*str)) str++;
 
-    if(*str == 0)  // All spaces?
+    if(*str == 0)  // Одни пробелы?
         return str;
 
-    // Trim trailing space
+    // Пробелы в конце
     end = str + strlen(str) - 1;
     while(end > str && isspace((unsigned char)*end)) end--;
 
-    // Write new null terminator character
+    // Новый конец строки
     end[1] = '\0';
 
     return str;
 }
 
-// Get player input safely using fgets
-char *get_player_input() {
-    char *input = malloc(100); // Allocate memory for input
+// Прочитать строку игрока: без крайних пробелов, в нижнем регистре, с одиночными пробелами.
+// Возвращает строку из malloc (освобождает вызывающий) или NULL, если ввод закончился.
+char *get_player_input(void) {
+    char *input = malloc(INPUT_SIZE); // Память под ввод
     if (input == NULL) {
         perror("Memory allocation failed");
-        exit(EXIT_FAILURE); // Exit on allocation failure
+        exit(EXIT_FAILURE); // Выходим, если память не выделилась
     }
 
-    if (fgets(input, 100, stdin) != NULL) {
-        return trim_whitespace(input);
-    } else {
-        free(input); // Free allocated memory if fgets fails
-        return NULL;  // Or handle the error as appropriate
+    fflush(stdout);
+    if (fgets(input, INPUT_SIZE, stdin) == NULL) {
+        free(input); // Освобождаем память, если fgets не сработал
+        return NULL;
     }
+
+    // Отбросить хвост слишком длинной строки
+    if (strchr(input, '\n') == NULL) {
+        int c;
+        while ((c = getchar()) != '\n' && c != EOF) {}
+    }
+
+    // Пишем результат в начало буфера, чтобы его можно было освободить
+    char *src = trim_whitespace(input);
+    char *dst = input;
+    bool prev_space = false;
+    for (; *src != '\0'; src++) {
+        unsigned char c = (unsigned char)*src;
+        if (isspace(c)) {
+            if (!prev_space) *dst++ = ' ';
+            prev_space = true;
+        } else {
+            *dst++ = (char)tolower(c);
+            prev_space = false;
+        }
+    }
+    *dst = '\0';
+    return input;
 }

@@ -1,22 +1,23 @@
-#include "dialogues.h"
 #include "game.h"
+#include "dialogues.h"
 
-DialogueEntry dialogues[] = {
-    // Base location
+static const DialogueEntry dialogues[] = {
+    // Подножие башни
     {"base", "base_intro", "You're at the base of the CN Tower. It's huge!", "Aww, sweetie, you're at the base of the CN Tower! It's so wonderful!"},
     {"base", "base_directions", "Entrance is North. Gift shop is East.", "The entrance is to the north, darling! And the gift shop is to the east, cutie!"},
     {"base", "base_alex", "You see a person who looks like they want to talk (West).", "You see someone who looks super friendly and they seem like they want to chat, sweetie! (West)"},
     {"base", "base_worker", "A worker is struggling with some boxes (South).", "Aww, a worker seems like they need help with some boxes, cutie! (South)"},
     {"base", "base_patrick", "You see a strange guy, he looks like a club member (West)", "You see a super cool person, they look like a member of a club, darling! (West)"},
     {"base", "base_what", "What do you want to do?", "So, sweetie, what's the vibe?"},
-    {"base", "base_hints", "Hints: 'Go North', 'Go East', 'Go West', 'Go South', 'Look Around', 'Inventory', 'Help', 'Exit', 'Restart', 'Save', 'Load'.", "Hints, my darling! 'Go North', 'Go East', 'Go West', 'Go South', 'Look Around', 'Inventory', 'Help', 'Exit', 'Restart', 'Save', 'Load'. What do you wanna do, sweetie?"},
+    {"base", "base_hints", "Hints: 'Go North', 'Go East', 'Go West', 'Go South', 'Look Around', 'Inventory', 'Help', 'Exit', 'Restart', 'Debug', 'Save', 'Load'.", "Hints, my darling! 'Go North', 'Go East', 'Go West', 'Go South', 'Look Around', 'Inventory', 'Help', 'Exit', 'Restart', 'Debug', 'Save', 'Load'. What do you wanna do, sweetie?"},
 
-    // Alex Rivers
+    {"base", "look_around_base", "You see people taking pictures and the tower.", "You see people taking the cutest pictures of the tower, sweetie!"},
+
+    // Алекс Риверс
     {"alex_rivers", "alex_intro", "You go to the person. They say their name is Alex Rivers.", "You go to the person! They introduce themselves as Alex Rivers, what a sweetie!"},
     {"alex_rivers", "alex_greeting", "\"Hey! Nice day to visit the CN Tower, right?\"", "\"Hiya, darling! Isn't today just an amazing day to visit the CN Tower?\""},
     {"alex_rivers", "alex_watch1", "Alex checks their watch. \"It's 17:46. I have 5 minutes to record a video for my social media channel.\"", "Alex checks their watch and says: \"Oh my gosh, darling! It's 17:46! I have like 5 minutes to make an amazing video for my social media channel\""},
     {"alex_rivers", "alex_talking", "Alex talks a lot about the weather, the view, and their love for the CN Tower.", "Alex is just talking about how pretty the view is and how much they love the CN Tower! They are so passionate!"},
-    {"alex_rivers", "alex_blah", "...blah, blah, blah! ({5-i} minutes)", "...blah, blah, blah! ({5-i} minutes)... they seem so passionate!"},
     {"alex_rivers", "alex_watch2", "...Alex looks at their watch.", "...Alex looks at their watch and seems startled, oh no, darling!"},
     {"alex_rivers", "alex_run", "\"Oh no! I lost track of time. Gotta run!\"", "\"Oh no, sweetie! I have to go now!\""},
     {"alex_rivers", "alex_time_wasted", "You wasted a lot of time.", "You spent a lot of time talking, darling, hehe."},
@@ -32,97 +33,111 @@ DialogueEntry dialogues[] = {
     {"alex_rivers", "alex_support5", "This is the best day of my life!", "This is the best day ever, sweetie!"},
     {"alex_rivers", "alex_thanks", "Alex: \"Wow, you think so? That's awesome! Here, take $40. Also i'll give you a ticket and a mask\"", "Alex: \"Aww, you think so, darling? That's amazing! Take $40 and here, a ticket and a mask, sweetie!\""},
     {"alex_rivers", "alex_thanks2", "Alex: \"Thanks! Every little bit helps.\"", "Alex: \"Thank you, sweetie! It means a lot.\""},
+    {"alex_rivers", "alex_choose", "Choose two ways to support Alex:", "Choose two ways to support Alex, darling:"},
+    {"alex_rivers", "alex_compliment", "Alex: \"You're too kind! It's always nice to meet a fan.\"", "Alex: \"Aww, you're too sweet, darling! I love meeting fans!\""},
+    {"alex_rivers", "alex_nothing", "Alex doesn't give you anything.", "Alex doesn't give you anything this time, sweetie."},
+    {"alex_rivers", "alex_ignore", "You ignore Alex and continue.", "You wave goodbye to Alex and continue, cutie!"},
 	{"alex_rivers", "alex_hints", "Hints: 'Compliment Alex', 'Ignore', 'Exit', 'Restart'.", "Hints, my darling! 'Compliment Alex', 'Ignore', 'Exit', 'Restart'. What are you gonna choose?"},
 
-    // Patrick
+    // Патрик
     {"Patrick", "patrick_intro", "You go to the strange guy. He says his name is Patrick.", "You go to the friendly person! They introduce themselves as Patrick, what a cutie!"},
     {"Patrick", "patrick_greeting", "\"Hey! You look like you've got energy. Join our quadrobics club?\"", "\"Hi, darling! You seem so energetic! Do you wanna join our quadrobics group, sweetie?\""},
     {"Patrick", "patrick_moves", "Patrick shows some quadrobics moves.", "Patrick shows you some quadrobics moves, very cool, darling!"},
     {"Patrick", "patrick_what", "What do you want to do?", "What would you like to do, darling?"},
     {"Patrick", "patrick_hints", "Hints: 'Join', 'Decline', 'Back', 'Exit', 'Restart'.", "Hints, sweetie! 'Join', 'Decline', 'Back', 'Exit', 'Restart'. Your move!"},
+    {"Patrick", "patrick_join1", "You join Patrick's quadrobics club.", "You join Patrick's quadrobics club, how exciting, darling!"},
+    {"Patrick", "patrick_join2", "You spend a year practicing, forgetting about the CN Tower.", "You spend a whole year practicing and totally forget about the CN Tower, sweetie."},
+    {"Patrick", "patrick_join3", "One day, you're mistaken for a stray cat and taken to a shelter.", "One day, someone thinks you're a stray kitty and takes you to a shelter, aww!"},
+    {"Patrick", "patrick_join4", "You're adopted and live a comfy but meaningless life.", "You get adopted and live a cozy but kinda meaningless life, cutie."},
+    {"Patrick", "patrick_join5", "You become useless. (Bad Ending)", "You become useless, darling. (Bad Ending)"},
+    {"Patrick", "patrick_decline", "You decline Patrick's offer.", "You politely decline Patrick's offer, sweetie."},
 
-    // Entrance
+    // Вход
     {"entrance", "entrance_line", "You're at the entrance. There's a long line for tickets.", "You are at the entrance, sweetie, so many people are waiting for tickets!"},
     {"entrance", "entrance_ticket", "You have a ticket! Go to security check (North).", "You have a ticket, amazing! Go straight to security check to the north, cutie!"},
     {"entrance", "entrance_no_ticket", "You need a ticket. Buy one at the ticket booth (West).", "You need a ticket, sweetie! Go buy it at the ticket booth to the west!"},
     {"entrance", "entrance_what", "What do you want to do?", "So, sweetie? What would you like to do?"},
     {"entrance", "entrance_hints", "Hints: 'Go North' (with ticket), 'Go West', 'Back', 'Exit', 'Restart'.", "Hints, cutie! 'Go North', 'Go West', 'Back', 'Exit', 'Restart'. Your choice!"},
 
-    // ... (Add all other locations and their dialogue entries here) ...
-	//Ticket Booth
+	// Касса
 	{"ticket_booth", "ticket_price", "You're at the ticket booth. Tickets are $40.", "You are at the ticket booth, sweetie! Tickets are $40."},
     {"ticket_booth", "ticket_what", "What do you want to do?", "What would you like to do, darling?"},
     {"ticket_booth", "ticket_hints", "Hints: 'Buy Ticket', 'Back', 'Exit', 'Restart'.", "Hints, sweetie! 'Buy Ticket', 'Back', 'Exit', 'Restart'. What are we buying?"},
-	// Security
+	// Досмотр
 	{"security", "security_check", "You're at the security check. They're checking bags and tickets.", "You are at the security check! They are checking all bags and tickets, sweetie!"},
 	{"security", "security_pass", "The guard checks your ticket and lets you through to the elevator (North).", "The guard checks your ticket and allows you to pass to the elevator to the north, cutie!"},
 	{"security", "security_no_ticket", "You need a ticket to go through.", "You need a ticket to go through, darling!"},
 	{"security", "security_what", "What do you want to do?", "What's your next move, darling?"},
 	{"security", "security_hints", "Hints: 'Go North' (with ticket), 'Back', 'Exit', 'Restart'.", "Hints, sweetie! 'Go North' (with ticket), 'Back', 'Exit', 'Restart'. So?"},
-	// Elevator
+	// Лифт
 	{"elevator", "elevator_close", "You're in the elevator. The doors close.", "You are in the elevator and the doors are closing, sweetie!"},
 	{"elevator", "elevator_up", "Going up fast...", "Going upppp, cutie!"},
 	{"elevator", "elevator_pop", "Your ears pop.", "Your ears are popping, darling!"},
 	{"elevator", "elevator_ding", "Ding! LookOut level.", "Ding! You are at the LookOut level, sweetie!"},
-	// LookOut
+	// Смотровая площадка
 	{"lookout", "lookout_view", "You're on the LookOut level! Great view of Toronto.", "You made it to the LookOut level, darling! The view of Toronto is astonishing!"},
 	{"lookout", "lookout_see", "You see the city, the lake, and Niagara Falls far away.", "You can see the city, the lake, and if you look far enough, Niagara Falls, cutie!"},
-	{"lookout", "lookout_directions", "Stairs to Glass Floor (Down). Info booth (East).", "Stairs to the Glass Floor are to the south! The info booth is to the east, sweetie!"},
+	{"lookout", "lookout_directions", "Stairs to Glass Floor (Down). Info booth (East). Elevator back to the base (Go Back).", "Stairs to the Glass Floor are down there! The info booth is to the east, and the elevator can take you back to the base, sweetie!"},
+	{"lookout", "lookout_look", "You take in the view, taking pictures.", "You take in the gorgeous view and snap so many pictures, darling!"},
+	{"lookout", "lookout_down", "You ride the elevator back down to the base.", "You ride the elevator back down to the base, sweetie!"},
 	{"lookout", "lookout_what", "What do you want to do?", "What do you wanna explore, darling?"},
-	{"lookout", "lookout_hints", "Hints: 'Go Down', 'Go East', 'Look Around', 'Exit', 'Restart'.", "Hints, cutie! 'Go Down', 'Go East', 'Look Around', 'Exit', 'Restart'. What do you wanna do next?"},
-	//Glass Floor
+	{"lookout", "lookout_hints", "Hints: 'Go Down', 'Go East', 'Go Back', 'Look Around', 'Exit', 'Restart'.", "Hints, cutie! 'Go Down', 'Go East', 'Go Back', 'Look Around', 'Exit', 'Restart'. What do you wanna do next?"},
+	// Стеклянный пол
 	{"glass_floor", "glass_scary", "You're on the Glass Floor! It's scary to look down.", "You are on the Glass Floor, sweetie! Looking down is so scary!"},
 	{"glass_floor", "glass_see", "You see the ground 342 meters below.", "You can see the ground 342 meters below you, wow, darling!"},
-	{"glass_floor", "glass_directions", "Stairs up to LookOut level. EdgeWalk sign (West).", "The stairs back up to the LookOut level are to the north. The EdgeWalk sign is to the west, cutie."},
+	{"glass_floor", "glass_directions", "Stairs up to LookOut level. EdgeWalk sign (West). Someone is laughing near a corner (East).", "The stairs back up to the LookOut level are right here. The EdgeWalk sign is to the west, and someone is giggling near a corner to the east, cutie."},
+	{"glass_floor", "glass_look_down", "It's a long way down! You feel dizzy.", "It's such a long way down, darling! You feel a little dizzy."},
 	{"glass_floor", "glass_what", "What do you want to do?", "What are we doing next, darling?"},
-	{"glass_floor", "glass_hints", "Hints: 'Go Up', 'Go West', 'Look Down', 'Exit', 'Restart'.", "Hints, sweetie! 'Go Up', 'Go West', 'Look Down', 'Exit', 'Restart'. Your choice?"},
-	//Edge Walk
+	{"glass_floor", "glass_hints", "Hints: 'Go Up', 'Go West', 'Go East', 'Look Down', 'Exit', 'Restart'.", "Hints, sweetie! 'Go Up', 'Go West', 'Go East', 'Look Down', 'Exit', 'Restart'. Your choice?"},
+	// Регистрация на EdgeWalk
 	{"edgewalk_registration", "edgewalk_desk", "You're at the EdgeWalk desk.", "You have arrived at the EdgeWalk desk, my darling!"},
 	{"edgewalk_registration", "edgewalk_ticket", "You have a ticket! The guide is preparing the gear (North).", "You have a ticket, amazing! The guide is preparing the gear to the north, sweetie!"},
 	{"edgewalk_registration", "edgewalk_no_ticket", "You need a ticket for EdgeWalk. It's $195. Buy one here.", "You need a ticket for the EdgeWalk, it's $195, darling! Buy one here!"},
 	{"edgewalk_registration", "edgewalk_what", "What do you want to do?", "What are we choosing next, cutie?"},
 	{"edgewalk_registration", "edgewalk_hints", "Hints: 'Buy Ticket', 'Go North' (with ticket), 'Back', 'Exit', 'Restart'.", "Hints, sweetie! 'Buy Ticket', 'Go North' (with ticket), 'Back', 'Exit', 'Restart'. So what do you wanna do?"},
-	// Edge Walk Preparation.
+	// Подготовка к EdgeWalk
 	{"edgewalk_preparation", "edgewalk_prep", "You're in the EdgeWalk prep area. The guide helps you put on a harness.", "You are in the EdgeWalk preparation area, my darling! The guide is helping you put on the harness!"},
 	{"edgewalk_preparation", "edgewalk_nervous", "You're excited and nervous.", "You are excited and nervous, this is really happening, cutie!"},
 	{"edgewalk_preparation", "edgewalk_check", "The guide checks your harness. Thumbs up!", "The guide checks your harness! Thumbs up, let's go, sweetie!"},
-	// Edge Walk
+	// EdgeWalk
 	{"edgewalk", "edgewalk_outside", "You're outside on the EdgeWalk! Wind is blowing. You're walking around the CN Tower!", "You are outside on the EdgeWalk, the wind is blowing! You are walking around the CN Tower, darling!"},
 	{"edgewalk", "edgewalk_exciting", "It's the most exciting thing ever!", "This is the most exciting thing ever, cutie!"},
 	{"edgewalk", "edgewalk_win", "Congrats! You did the EdgeWalk! (Win)", "Congratulations, darling! You did the EdgeWalk! (Win), you did it!"},
-	// Gift Shop
+	// Сувенирный магазин
 	{"gift_shop", "gift_souvenirs", "You're in the gift shop. They have souvenirs, postcards, and CN Tower stuff.", "You are in the gift shop, sweetie! They sell souvenirs, postcards, and cool CN Tower things!"},
 	{"gift_shop", "gift_mask", "You see a disguise kit for $20.", "You see a disguise kit here that is $20, my darling!"},
 	{"gift_shop", "gift_what", "What do you want to do?", "What are you gonna choose, sweetie?"},
 	{"gift_shop", "gift_hints", "Hints: 'Buy Postcards', 'Buy Souvenir', 'Buy Mask' (with enough money), 'Back', 'Exit', 'Restart'.", "Hints, darling! 'Buy Postcards', 'Buy Souvenir', 'Buy Mask' (with enough money), 'Back', 'Exit', 'Restart'. What are we buying?"},
-	// Information Booth
+	// Справочная
 	{"information_booth", "info_brochures", "You're at the info booth. Brochures about the CN Tower are here.", "You are at the info booth, my sweetie. There are brochures about the CN Tower here!"},
 	{"information_booth", "info_staff", "A staff member is answering questions.", "A staff member is here, darling, ready to answer all the questions!"},
 	{"information_booth", "info_what", "What do you want to do?", "What do you want to do, cutie?"},
-	{"information_booth", "info_hints", "Hints: 'Ask About History', 'Ask About Building', 'Back', 'Exit', 'Restart'.", "Hints, darling! 'Ask About History', 'Ask About Building', 'Back', 'Exit', 'Restart'. What do you wanna know?"},
-	// Worker
+	{"information_booth", "info_hints", "Hints: 'Ask About History', 'Ask About Building', 'Return Phone' (if you found one), 'Back', 'Exit', 'Restart'.", "Hints, darling! 'Ask About History', 'Ask About Building', 'Return Phone' (if you found one), 'Back', 'Exit', 'Restart'. What do you wanna know?"},
+	{"information_booth", "info_phone1", "You hand the phone to the staff member. They call its owner.", "You hand the phone to the staff member, sweetie. They call its owner right away!"},
+	{"information_booth", "info_phone2", "Alex Rivers runs in, hugs the phone and hands you a $100 reward. They have no idea it was you who scared them.", "Alex Rivers runs in, hugs the phone and gives you a $100 reward, darling! They have no idea it was you who scared them, hehe."},
+	{"information_booth", "info_no_phone", "You don't have anything to return.", "You don't have anything to return, cutie."},
+	// Рабочий
 	{"worker", "worker_tired", "You go to the worker. He looks tired.", "You walk to the worker, they seem very tired, sweetie."},
 	{"worker", "worker_help", "\"Hey, can you help me? I need to move these boxes to the storage room.\"", "\"Hi, cutie, can you help me? I need to get these boxes to the storage room.\""},
 	{"worker", "worker_start", "You start helping.", "You are now helping out, amazing!"},
-	{"worker", "worker_carry", "You carry box {i} to the storage room...", "You carry box {i} to the storage room..."},
 	{"worker", "worker_fifth", "You pick up the 5th box. It's open a bit.", "You pick up the 5th box, it seems open a bit, darling!"},
 	{"worker", "worker_what", "What do you want to do?", "What are you going to do, darling?"},
 	{"worker", "worker_hints", "Hints: 'Look Inside', 'Continue', 'Exit', 'Restart'.", "Hints, sweetie! 'Look Inside', 'Continue', 'Exit', 'Restart'. So?"},
-	// Open Box
+	// Открытая коробка
 	{"open_box", "box_contents", "You look inside. You see money, a book, and a mask.", "You look inside, cutie! You can see money, a book, and a mask."},
 	{"open_box", "box_what", "What do you want to do?", "What's your choice, sweetie?"},
 	{"open_box", "box_hints", "Hints: 'Take Nothing', 'Take Money', 'Take Book', 'Take Mask', 'Exit', 'Restart'.", "Hints, darling! 'Take Nothing', 'Take Money', 'Take Book', 'Take Mask', 'Exit', 'Restart'. What will you do?"},
-    // Caught Stealing
+    // Поймали на краже
 	{"caught_stealing", "caught_seen", "The worker sees you!", "Oh no, darling! The worker sees you!"},
 	{"caught_stealing", "caught_worker", "Worker: \"Hey! What are you doing?!\"", "Worker: \"Hey, sweetie! What do you think you are doing?!\""},
 	{"caught_stealing", "caught_security", "He calls security. You're taken to the police.", "He calls security, you are being taken to the police, sweetie!"},
 	{"caught_stealing", "caught_what", "What do you want to do?", "What now, darling?"},
 	{"caught_stealing", "caught_hints", "Hints: 'Tell Truth', 'Bribe', 'Lie', 'Exit', 'Restart'.", "Hints, darling! 'Tell Truth', 'Bribe', 'Lie', 'Exit', 'Restart'. Your move!"},
-	// Police Station
+	// Полицейский участок
 	{"police_station", "police_questions", "You're at the police station. The officer is asking you questions.", "You are now at the police station, darling, the officer is asking you all the questions!"},
 	{"police_station", "police_what", "What do you want to do?", "What now, sweetie?"},
 	{"police_station", "police_hints", "Hints: 'Tell Truth', 'Bribe', 'Lie', 'Exit', 'Restart'.", "Hints, cutie! 'Tell Truth', 'Bribe', 'Lie', 'Exit', 'Restart'. What do you choose?"},
-	// Storage Room
+	// Склад
 	{"storage_room", "storage_thanks", "You're in the storage room with the worker.", "You are in the storage room with the worker, sweetie!"},
 	{"storage_room", "storage_reward", "Worker: \"Thanks a lot! Here's $20.\"", "Worker: \"Thank you, darling! Here is $20!\""},
 	{"storage_room", "storage_money", "You got $20.", "You get $20, amazing!"},
@@ -138,26 +153,27 @@ DialogueEntry dialogues[] = {
     {"just_a_chill_guy", "chill_hints2", "Hints: 'Use Mask',  'Go Forward', 'Ask About Corner', 'Back', 'Exit', 'Restart'.","Hints, sweetie! 'Use Mask',  'Go Forward', 'Ask About Corner', 'Back', 'Exit', 'Restart'. What are you deciding?"},
     {"just_a_chill_guy", "chill_hints3", "Hints: 'Use Mask', 'Use Bible', 'Go Forward', 'Ask About Corner', 'Back', 'Exit', 'Restart'.","Hints, sweetie! 'Use Mask', 'Use Bible', 'Go Forward', 'Ask About Corner', 'Back', 'Exit', 'Restart'."},
 
-    // Corner
+    // Угол
 	{"corner", "corner_peek", "You use your mask and peek around the corner. You see quadrobists practicing.", "You use the mask and look around the corner, you see the quadrobists practicing, cutie."},
 	{"corner", "corner_back", "They don't see you. You go back to Just a Chill Guy.", "They don't see you! You go back to Just a Chill Guy, darling!"},
+	{"corner", "corner_empty", "The corner is empty now. The quadrobists ran away from the Bible. You go back to Just a Chill Guy.", "The corner is empty now, darling! The quadrobists ran away from the Bible. You go back to Just a Chill Guy."},
 	{"corner", "corner_seen", "You go to the corner, and quadrobists see you!", "You go to the corner and the quadrobists see you, darling!"},
 	{"corner", "corner_join", "They make you join their quadrobics training.", "They make you join their quadrobics training now, sweetie!"},
 	{"corner", "corner_quadrobist", "Now you're a quadrobist. You must scare Alex Rivers.", "You are now a quadrobist! You have to go scare Alex Rivers, darling!"},
-	// Quadrobics Base
+	// База квадроберов
 	{"quadrobics_base", "quadrobics_move", "You move like a quadrobist. Alex is West.", "You are now moving like a quadrobist, Alex is to the west, darling!"},
 	{"quadrobics_base", "quadrobics_hints", "Hints: 'Go West', 'Exit', 'Restart'.", "Hints, cutie! 'Go West', 'Exit', 'Restart'. So what's next?"},
-	// Scare Alex
+	// Напугать Алекса
 	{"scare_alex", "scare_success", "You successfully scared Alex Rivers using the mask and the Bible!", "You have successfully scared Alex Rivers using the mask and the Bible, amazing!"},
 	{"scare_alex", "scare_drop", "Alex runs away, dropping their phone. You see your chance!", "Alex runs away, dropping their phone! You see your chance to get their phone, sweetie!"},
 	{"scare_alex", "scare_hints", "Hints: 'Take Phone', 'Leave Phone', 'Exit', 'Restart'", "Hints, darling! 'Take Phone', 'Leave Phone', 'Exit', 'Restart'. What are you choosing?"},
-    // Phone Found
+    // Телефон у тебя
 	{"phone_found", "phone_run", "You take the phone and run to the edge of the roof. There are no obstacles in front of you.", "You take the phone and run to the edge of the roof, you can see no obstacles in front of you, sweetie."},
 	{"phone_found", "phone_what", "What do you want to do?", "What are you going to do, cutie?"},
 	{"phone_found", "phone_hints", "Hints: 'Jump', 'Go Back' to the Glass Floor, 'Exit', 'Restart'", "Hints, darling! 'Jump', 'Go Back' to the Glass Floor, 'Exit', 'Restart'. What's the move?"},
-	// Roof
+	// Крыша
 	{"roof", "roof_jump", "You jumped from the roof. The last thing you see is blue sky", "You jumped from the roof, the last thing you see is the beautiful blue sky, sweetie."},
-    // Information Booth Dialogues
+    // Справки об истории и постройке
     {"information_booth", "history1", "CN Tower: Built in 1976, once the tallest structure (553.3 m).", "CN Tower: Built in 1976, once the tallest structure (553.3 m)."},
 	{"information_booth", "history2", "Built by Canadian National Railway. Now a tourist spot.", "Built by Canadian National Railway. Now a tourist spot."},
     {"information_booth", "history3", "It can handle earthquakes and winds. Has a core with elevators and stairs.", "It can handle earthquakes and winds. Has a core with elevators and stairs."},
@@ -166,14 +182,93 @@ DialogueEntry dialogues[] = {
     {"information_booth", "building3", "Foundation is 15 m deep, with 7,000 cubic meters of concrete.", "Foundation is 15 m deep, with 7,000 cubic meters of concrete."},
 
 
-    {NULL, NULL, NULL, NULL} // Terminator entry (IMPORTANT!)
+    // Общие для всех локаций
+    {"any", "invalid_command", "Invalid command. Check the hints.", "Oopsie, that's not a command, sweetie! Check the hints."},
+    {"any", "help1", "Use 'Go' + direction (North, South, East, West) to move.", "Use 'Go' + a direction (North, South, East, West) to move around, darling!"},
+    {"any", "help2", "Use 'Look' to see where you are again, 'Look Around' to see more.", "Use 'Look' to see where you are again and 'Look Around' to see more, sweetie!"},
+    {"any", "help3", "Interact with things using commands like 'Buy Ticket', 'Ask About History'.", "Interact with things using commands like 'Buy Ticket' or 'Ask About History', cutie!"},
+    {"any", "help4", "'Inventory' shows your items and money. 'Save' and 'Load' keep your progress.", "'Inventory' shows your cute items and money. 'Save' and 'Load' keep your progress, darling!"},
+    {"any", "help5", "'Exit' - quit game, 'Restart' - start new game, 'Debug' - debug menu.", "'Exit' - quit game, 'Restart' - start over, 'Debug' - debug menu, sweetie!"},
+
+    {NULL, NULL, NULL, NULL} // Завершающая запись (ВАЖНО!)
 };
 
-const char *get_dialogue(const char *location, const char *key, bool sweet_mode) {
-    for (int i = 0; dialogues[i].key != NULL; i++) {
-        if (strcmp(dialogues[i].key, location) == 0 && strcmp(dialogues[i].text, key) == 0) {
-            return sweet_mode ? dialogues[i].sweet_text : dialogues[i].text;
+static const DialogueEntry *find_dialogue(const char *location, const char *key) {
+    for (int i = 0; dialogues[i].location != NULL; i++) {
+        if (strcmp(dialogues[i].location, location) == 0 && strcmp(dialogues[i].key, key) == 0) {
+            return &dialogues[i];
         }
     }
-    return "Dialogue not found"; // Should not happen in normal gameplay
+    return NULL;
+}
+
+const char *get_dialogue(const char *location, const char *key, bool sweet_mode) {
+    const DialogueEntry *entry = find_dialogue(location, key);
+    if (entry == NULL) {
+        entry = find_dialogue("any", key); // Если нет, ищем среди общих реплик
+    }
+    if (entry == NULL) {
+        return "Dialogue not found"; // В нормальной игре такого быть не должно
+    }
+    return sweet_mode ? entry->sweet_text : entry->text;
+}
+
+// Тот же арт, что Python-версия качает из cn_tower_art.txt
+static const char *cn_tower_art[] = {
+    "                                    (",
+    "                                    ,",
+    "                                    ,",
+    "                                   *",
+    "                                   % ,",
+    "                                   % ,",
+    "                                   ( *",
+    "                                   *.*",
+    "                                  .* /",
+    "                                   * /",
+    "                                   * (",
+    "                                   * #",
+    "                                   * #",
+    "                                   , %",
+    "                                  %",
+    "                                ,,     *",
+    "                               #.        .",
+    "                                * /&&@&*,",
+    "                                /*      (",
+    "                                  /  /,",
+    "                                  *  .#",
+    "                                  *   /",
+    "                                  *   ,",
+    "                                  ,   .",
+    "                                  .   *",
+    "                                      #",
+    "                                      /*",
+    "                                 .    .(\")",
+    "                                 .     /",
+    "                                 ,     *",
+    "                                 *     *",
+    "                                 *     *",
+    "                                 *     (\"",
+    "                                 /     /.",
+    "                                 /     ,*",
+    "                                 *     ./",
+    "                                 ,      *",
+    "                                 .      /",
+    "                                        (",
+    "                                        (",
+    "                                        /",
+    "                               .       *.",
+    "                               ,       .,",
+    "                               ,        /",
+    "                               *        #",
+    "                               *        %",
+    "                               /        &",
+    "                               /        #",
+    "                    ...........,/(#(/***%",
+    NULL
+};
+
+void print_cn_tower_art(void) {
+    for (int i = 0; cn_tower_art[i] != NULL; i++) {
+        printf("%s\n", cn_tower_art[i]);
+    }
 }

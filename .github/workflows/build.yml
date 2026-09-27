@@ -5,26 +5,37 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
+  build-windows:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
-    - name: Setup MSVC (Windows)
+    - name: Настройка MSVC
       uses: ilammy/msvc-dev-cmd@v1
 
-    - name: Build with Make (Windows)  # Added build step
+    - name: Сборка через nmake
       run: |
         cd src
-        nmake  # Assuming you have a makefile that uses nmake
+        nmake
 
-    - name: List directory contents (Windows)
-      run: dir src
-
-    - name: Upload Artifact (Windows)
-      uses: actions/upload-artifact@v3  # Moved upload-artifact to a separate step
+    - name: Загрузка exe
+      uses: actions/upload-artifact@v4
       with:
         name: cn_tower_game-windows
         path: src\cn_tower_game.exe
-      if: success() && (github.event_name == 'push' || github.event_name == 'pull_request' && github.event.pull_request.merged == true)  # Check for successful build and upload only on merge or push
+
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Сборка через make
+      run: make -C src CFLAGS="-std=c99 -Wall -Wextra -pedantic -Werror -O2"
+
+    - name: Прохождение до победы
+      run: |
+        cd src
+        CN_TOWER_SEED=1 ./cn_tower_game < ../tests/win_path.txt > ../win_output.txt
+        grep -F "(Win)" ../win_output.txt || { cat ../win_output.txt; exit 1; }

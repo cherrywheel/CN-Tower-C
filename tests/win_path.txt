@@ -1,0 +1,30 @@
+20
+go west
+go west
+4
+1
+ignore
+Go  South
+look inside
+take book
+back
+inventory
+go north
+go north
+go north
+go down
+go east
+use bible
+go forward
+go west
+take phone
+go back
+go up
+go east
+return phone
+inventory
+back
+go down
+go west
+buy ticket
+go north

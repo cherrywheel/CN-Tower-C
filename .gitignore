@@ -15,3 +15,7 @@ Debug/
 
 # CN-Tower game save
 savegame.dat
+age.dat
+
+# Linux build
+src/cn_tower_game

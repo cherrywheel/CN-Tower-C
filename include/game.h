@@ -8,11 +8,20 @@
 #include <time.h>
 #include <ctype.h>
 
-// --- Constants ---
+// --- Константы ---
 #define STARTING_MONEY 40
-// Add more constants here as needed (e.g., prices)
+#define TICKET_PRICE 40
+#define EDGEWALK_PRICE 195
+#define PHONE_REWARD 100
+#define MIN_AGE 16
 
-// --- Data Structures ---
+#define LOCATION_SIZE 50
+#define INPUT_SIZE 100
+
+#define SAVE_FILE "../data/savegame.dat"
+#define AGE_FILE "../data/age.dat"
+
+// --- Структуры данных ---
 
 typedef struct {
     int money;
@@ -28,25 +37,41 @@ typedef struct {
     bool worker_task;
     bool used_mask;
     bool used_bible;
+    bool alex_rewarded;
+    bool phone_returned;
 } Inventory;
 
-// --- Function Declarations (Prototypes) ---
+// Что делать главному циклу после команды или смены локации.
+typedef enum {
+    GAME_CONTINUE, // Остаться на месте и ждать следующую команду
+    GAME_ENTER,    // (Пере)войти в текущую локацию: вывести её и запустить события
+    GAME_OVER,     // Достигнута концовка
+    GAME_RESTART,
+    GAME_EXIT
+} GameState;
 
-// From game.c
-void display_location(const char *location, Inventory *inventory, bool sweet_mode);
-const char * process_command(char *command, const char *current_location, Inventory *inventory, bool sweet_mode);
+// --- Объявления функций (прототипы) ---
+
+// Из game.c
+void new_game(char *location, Inventory *inventory);
+GameState enter_location(char *location, Inventory *inventory, bool sweet_mode);
+GameState process_command(const char *command, char *location, Inventory *inventory, bool *sweet_mode);
+bool is_valid_location(const char *location);
 bool has_item(Inventory *inventory, const char *item);
 void add_item(Inventory *inventory, const char *item);
 void remove_item(Inventory *inventory, const char *item);
 void display_inventory(Inventory *inventory);
-// From dialogues.c
-const char *get_dialogue(const char *location, const char *key, bool sweet_mode);
 
-// From utils.c
-void clear_console();
+// Из dialogues.c
+const char *get_dialogue(const char *location, const char *key, bool sweet_mode);
+void print_cn_tower_art(void);
+
+// Из utils.c
 void save_game(const char *location, Inventory *inventory, const char *filename);
 bool load_game(char *location, Inventory *inventory, const char *filename);
+int load_age(const char *filename);
+void save_age(int age, const char *filename);
 char *trim_whitespace(char *str);
-char *get_player_input();
+char *get_player_input(void);
 
 #endif // GAME_H
