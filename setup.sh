@@ -8,6 +8,9 @@
 #   --no-test    skip playing through to the win after the build
 #   --cross      debian and ubuntu only: install every cross compiler and qemu
 #                that ci uses and play through to the win on each linux arch
+#                loongarch64 joins in when zig is around (pip install ziglang)
+#   --out DIR    with --cross keep every static binary in DIR
+#                as cn_tower_game-linux-<arch>
 #   --help       show this
 
 set -e
@@ -15,12 +18,23 @@ set -e
 YES=0
 TEST=1
 CROSS=0
+OUT=""
 
-for arg in "$@"; do
+while [ $# -gt 0 ]; do
+    arg=$1
+    shift
     case "$arg" in
         --yes|-y) YES=1 ;;
         --no-test) TEST=0 ;;
         --cross) CROSS=1 ;;
+        --out)
+            if [ $# -eq 0 ]; then
+                echo "--out needs a directory"
+                exit 1
+            fi
+            OUT=$1
+            shift
+            ;;
         --help|-h)
             awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"
             exit 0
@@ -31,6 +45,11 @@ for arg in "$@"; do
             ;;
     esac
 done
+
+if [ -n "$OUT" ]; then
+    mkdir -p "$OUT"
+    OUT=$(cd "$OUT" && pwd)
+fi
 
 cd "$(dirname "$0")"
 ROOT=$(pwd)
@@ -231,13 +250,16 @@ if [ "$CROSS" = 1 ]; then
         exit 1
     fi
 
-    # arch cc package qemu
+    # arch compiler package qemu where - means none needed
+    # zig:<target> builds with zig from pypi when its installed
     TARGETS="
+x86_64 gcc - -
 i686 i686-linux-gnu-gcc libc6-dev-i386-cross qemu-i386
 aarch64 aarch64-linux-gnu-gcc libc6-dev-arm64-cross qemu-aarch64
 armhf arm-linux-gnueabihf-gcc libc6-dev-armhf-cross qemu-arm
 armel arm-linux-gnueabi-gcc libc6-dev-armel-cross qemu-arm
 riscv64 riscv64-linux-gnu-gcc libc6-dev-riscv64-cross qemu-riscv64
+loongarch64 zig:loongarch64-linux-musl - qemu-loongarch64
 mipsel mipsel-linux-gnu-gcc libc6-dev-mipsel-cross qemu-mipsel
 mips mips-linux-gnu-gcc libc6-dev-mips-cross qemu-mips
 mips64el mips64el-linux-gnuabi64-gcc libc6-dev-mips64el-cross qemu-mips64el
@@ -253,7 +275,7 @@ m68k m68k-linux-gnu-gcc libc6-dev-m68k-cross qemu-m68k
 sh4 sh4-linux-gnu-gcc libc6-dev-sh4-cross qemu-sh4
 "
     PKGS="qemu-user"
-    for pkg in $(echo "$TARGETS" | awk 'NF { print "gcc-" substr($2, 1, length($2) - 4), $3 }'); do
+    for pkg in $(echo "$TARGETS" | awk 'NF && $3 != "-" { print "gcc-" substr($2, 1, length($2) - 4), $3 }'); do
         PKGS="$PKGS $pkg"
     done
 
@@ -265,12 +287,31 @@ sh4 sh4-linux-gnu-gcc libc6-dev-sh4-cross qemu-sh4
         exit 0
     fi
 
-    FAILED=""
+    HAVE_ZIG=0
+    if have python3 && python3 -m ziglang version >/dev/null 2>&1; then
+        HAVE_ZIG=1
+    fi
+
+    CROSS_CFLAGS=${CFLAGS:--std=c99 -O2}
+    rm -f "$ROOT/cross_failed.txt"
     echo "$TARGETS" | while read -r arch cc pkg qemu; do
         [ -n "$arch" ] || continue
+        case "$cc" in
+            zig:*)
+                if [ "$HAVE_ZIG" = 0 ]; then
+                    say "$arch skipped since theres no zig (pip install ziglang)"
+                    continue
+                fi
+                cc="python3 -m ziglang cc -target ${cc#zig:}"
+                ;;
+        esac
+        [ "$qemu" = "-" ] && qemu=""
         make -s clean
-        if make -s CC="$cc" CFLAGS="-std=c99 -O2" LDFLAGS="-static" && play_to_win "$qemu"; then
+        if make -s CC="$cc" CFLAGS="$CROSS_CFLAGS" LDFLAGS="-static" && play_to_win "$qemu"; then
             say "$arch ok"
+            if [ -n "$OUT" ]; then
+                cp cn_tower_game "$OUT/cn_tower_game-linux-$arch"
+            fi
         else
             say "$arch FAILED"
             echo "$arch" >> "$ROOT/cross_failed.txt"

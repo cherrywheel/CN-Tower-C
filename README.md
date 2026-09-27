@@ -177,7 +177,11 @@ it asks before installing anything and `--yes` skips the questions
 
 it knows apt dnf yum pacman zypper apk xbps emerge eopkg swupd nix brew pkg pkg_add pkgin pkgman and winget
 
-on debian or ubuntu `sh setup.sh --cross` also installs every cross compiler and qemu that ci uses and plays through to the win on all 18 linux archs right on your machine
+on debian or ubuntu `sh setup.sh --cross` also installs every cross compiler and qemu that ci uses and plays through to the win on all 20 linux archs right on your machine
+
+loongarch64 needs zig for that so `pip install ziglang` first and `--out DIR` keeps all the binaries
+
+thats exactly what ci runs for linux
 
 ### by hand
 
