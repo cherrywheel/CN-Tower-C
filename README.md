@@ -225,7 +225,7 @@ ci builds it with mcst `lcc` 1.31.05 and plays through to the win under `qemu-e2
 
 the build targets e2k v6 so its elbrus 2c3 12c and 16c
 
-the toolchain lives in a private prerelease of this repo so forks wont get this build
+the toolchain comes from [varyashine/e2k-toolchain](https://github.com/varyashine/e2k-toolchain) releases
 
 on the real thing
 
