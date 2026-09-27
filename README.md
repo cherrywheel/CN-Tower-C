@@ -132,6 +132,20 @@ ci plays every build except windows on arm and a few openwrt ones through to the
 
 linux ones run under qemu and bsd solaris and haiku ones run in real vms
 
+### why every arch
+
+a text adventure doesnt need a gpu or a fast cpu or even a real screen so theres no excuse for it not to run everywhere
+
+its plain c99 with zero dependencies so it doubles as a tiny canary for your setup
+
+if it wins the game then your compiler your libc your emulator and your weird box all work
+
+dig out whatever you have lying around an old router a raspberry pi a sparc from the closet an elbrus or a fresh loongson and play it
+
+porting a compiler or bringing up an emulator
+
+this is a small real program with a known good ending so use it to check your work
+
 ### windows on arm
 
 idgaf about windows on arm
