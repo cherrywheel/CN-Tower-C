@@ -13,6 +13,10 @@ CACHE_DIR="${CACHE_DIR:-/cache}"
 export CACHE_DIR
 cd "$BUILDER_DIR"
 
+# wget waits 15 minutes on a stalled mirror by default so give up and retry sooner
+printf 'timeout = 60\ntries = 5\nwaitretry = 5\n' > /tmp/wgetrc
+export WGETRC=/tmp/wgetrc
+
 # the release containers ship setup.sh that downloads checks and unpacks the sdk
 # we keep that script as is and only swap the line that downloads the archive
 # so the signature and checksum checks stay exactly the ones openwrt ships
