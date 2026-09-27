@@ -280,23 +280,38 @@ jobs:
         gh release download "$TOOLCHAIN_TAG" -p "$TOOLCHAIN_FILE" -D "$RUNNER_TEMP/e2k"
         echo "$TOOLCHAIN_SHA256  $RUNNER_TEMP/e2k/$TOOLCHAIN_FILE" | sha256sum -c
 
-    - name: look inside
+    - name: unpack and verify
       run: |
         cd "$RUNNER_TEMP/e2k"
         unzip -q "$TOOLCHAIN_FILE"
         rm "$TOOLCHAIN_FILE"
-        du -sh .
-        find . -maxdepth 4 -not -path '*/fs/*' | sort | head -200
-        for f in $(find . -maxdepth 4 \( -name 'setup.sh' -o -name 'README*' -o -name '*.sha512' -o -name 'SHA512*' \) -not -path '*/fs/*'); do
-          echo "=============== $f"
-          head -c 20000 "$f"
-        done
+        cd elbrus-toolchain
+        sha512sum -c SHA512SUMS
+        echo "E2K=$RUNNER_TEMP/e2k/elbrus-toolchain" >> "$GITHUB_ENV"
+
+    - name: build with lcc
+      run: |
+        "$E2K/lcc-cross/bin/lcc" --version
+        make -C src CC="$E2K/lcc-cross/bin/lcc" CFLAGS="-std=c99 -Wall -Wextra -O2" LDFLAGS="-static"
+        file src/cn_tower_game
+
+    - name: play through to the win under qemu-e2k
+      run: |
+        cd src
+        CN_TOWER_SEED=1 "$E2K/emulator/qemu-e2k" -L "$E2K/lcc-cross/fs" ./cn_tower_game < ../tests/win_path.txt > ../win_output.txt
+        grep -F "(Win)" ../win_output.txt || { cat ../win_output.txt; exit 1; }
+
+    - name: upload binary
+      uses: actions/upload-artifact@v7
+      with:
+        name: cn_tower_game-linux-e2k
+        path: src/cn_tower_game
 
   # release on every push to main
-  # windows linux and macos must pass while the vm builds ship if they made it
+  # windows linux and macos must pass while the vm and elbrus builds ship if they made it
   release:
     if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build-windows.result == 'success' && needs.build-linux.result == 'success' && needs.build-macos.result == 'success' }}
-    needs: [ build-windows, build-linux, build-macos, build-wasm, build-freebsd, build-openbsd, build-netbsd, build-dragonflybsd, build-solaris, build-illumos, build-haiku ]
+    needs: [ build-windows, build-linux, build-macos, build-elbrus, build-wasm, build-freebsd, build-openbsd, build-netbsd, build-dragonflybsd, build-solaris, build-illumos, build-haiku ]
     runs-on: ubuntu-latest
     permissions:
       contents: write
