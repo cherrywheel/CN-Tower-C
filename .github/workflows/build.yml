@@ -288,7 +288,7 @@ jobs:
         cd elbrus-toolchain
         sha512sum -c SHA512SUMS
         # lcc looks for its parts under this exact path so setup.sh just symlinks it there
-        sh setup.sh
+        sudo sh "$PWD/setup.sh"
         echo "E2K=$RUNNER_TEMP/e2k/elbrus-toolchain" >> "$GITHUB_ENV"
         echo "LCC_HOME=/opt/mcst/lcc-1.31.05.e2k-v6.2c3.linux-6.1" >> "$GITHUB_ENV"
 
