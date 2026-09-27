@@ -287,18 +287,21 @@ jobs:
         rm "$TOOLCHAIN_FILE"
         cd elbrus-toolchain
         sha512sum -c SHA512SUMS
+        # lcc looks for its parts under this exact path so setup.sh just symlinks it there
+        sh setup.sh
         echo "E2K=$RUNNER_TEMP/e2k/elbrus-toolchain" >> "$GITHUB_ENV"
+        echo "LCC_HOME=/opt/mcst/lcc-1.31.05.e2k-v6.2c3.linux-6.1" >> "$GITHUB_ENV"
 
     - name: build with lcc
       run: |
-        "$E2K/lcc-cross/bin/lcc" --version
-        make -C src CC="$E2K/lcc-cross/bin/lcc" CFLAGS="-std=c99 -Wall -Wextra -O2" LDFLAGS="-static"
+        "$LCC_HOME/bin/lcc" --version
+        make -C src CC="$LCC_HOME/bin/lcc" CFLAGS="-std=c99 -Wall -Wextra -O2" LDFLAGS="-static"
         file src/cn_tower_game
 
     - name: play through to the win under qemu-e2k
       run: |
         cd src
-        CN_TOWER_SEED=1 "$E2K/emulator/qemu-e2k" -L "$E2K/lcc-cross/fs" ./cn_tower_game < ../tests/win_path.txt > ../win_output.txt
+        CN_TOWER_SEED=1 "$E2K/emulator/qemu-e2k" -L "$LCC_HOME/fs" ./cn_tower_game < ../tests/win_path.txt > ../win_output.txt
         grep -F "(Win)" ../win_output.txt || { cat ../win_output.txt; exit 1; }
 
     - name: upload binary
