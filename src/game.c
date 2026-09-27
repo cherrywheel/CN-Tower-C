@@ -1,990 +1,806 @@
 #include "game.h"
 #include "dialogues.h"
-#include <stdarg.h>
 
-// Forward declarations (needed because display_location calls process_command, and vice-versa)
-void display_location(const char *location, Inventory *inventory, bool sweet_mode);
+// Все локации игры (для проверки сохранений и меню отладки)
+static const char *locations[] = {
+    "base", "alex_rivers", "Patrick", "entrance", "ticket_booth", "security",
+    "elevator", "lookout", "glass_floor", "edgewalk_registration",
+    "edgewalk_preparation", "edgewalk", "gift_shop", "information_booth",
+    "worker", "open_box", "caught_stealing", "storage_room",
+    "just_a_chill_guy", "corner", "quadrobics_base", "alex_rivers_quadrobics",
+    "scare_alex", "phone_found", "roof",
+    NULL
+};
 
-// Helper function to format strings (like Python's f-strings)
-char *format_string(const char *format, ...) {
-    va_list args;
-    va_start(args, format);
+static const char *valid_items[] = {
+    "ticket", "mask", "edgewalk_ticket", "postcards", "souvenir", "bible", "alex_phone",
+    NULL
+};
 
-    // Determine the size needed for the formatted string
-    int size = vsnprintf(NULL, 0, format, args);
-    if (size < 0) {
-        va_end(args);
-        return NULL; // Error
-    }
-
-    char *str = malloc(size + 1); // Allocate memory (+1 for null terminator)
-    if (str == NULL) {
-        va_end(args);
-        return NULL; // Memory allocation failed
-    }
-
-    vsnprintf(str, size + 1, format, args); // Actually format the string
-    va_end(args);
-
-    return str;
+// Вывести одну реплику локации
+static void say(const char *location, const char *key, bool sweet_mode) {
+    printf("%s\n", get_dialogue(location, key, sweet_mode));
 }
-const char* process_command(char *command, const char *current_location, Inventory *inventory, bool sweet_mode) {
-    char *new_location = NULL; // Initialize to NULL
 
-    if (strcmp(current_location, "base") == 0) {
-        // --- BASE Location Commands ---
-        if (strcmp(command, "go north") == 0) {
-            new_location = "entrance";
-        } else if (strcmp(command, "go east") == 0) {
-            new_location = "gift_shop";
-        } else if (strcmp(command, "go west") == 0) {
-            if (!inventory->met_alex) {
-                new_location = "alex_rivers";
-            } else {
-                new_location = "Patrick";
-            }
-        } else if (strcmp(command, "go south") == 0 && !inventory->worker_task && !inventory->met_patrick) {
-            new_location = "worker";
-        } else if (strcmp(command, "look around") == 0) {
-            printf("%s\n", get_dialogue(current_location, "look_around_base", sweet_mode)); // Assuming a dialogue key
-        } else if (strcmp(command, "help") == 0) {
-			printf("%s\n", get_dialogue(current_location, "base_help1", sweet_mode)); // Assuming dialogue keys
-            printf("%s\n", get_dialogue(current_location, "base_help2", sweet_mode));
-            printf("%s\n", get_dialogue(current_location, "base_help3", sweet_mode));
-            printf("%s\n", get_dialogue(current_location, "base_help4", sweet_mode));
-            printf("%s\n", get_dialogue(current_location, "base_help5", sweet_mode));
-        } else if (strcmp(command, "inventory") == 0) {
-            display_inventory(inventory);
-        } else if (strcmp(command, "save") == 0) {
-            save_game(current_location, inventory, "../data/savegame.dat");
-        } else if (strcmp(command, "load") == 0) {
-            char *temp_location = malloc(50);
-            if (!temp_location) {
-                perror("Failed to allocate memory for location!");
-                exit(EXIT_FAILURE);
-            }
-            if (load_game(temp_location, inventory, "../data/savegame.dat")) {
-                new_location = temp_location; // Use the loaded location
-            } else {
-                free(temp_location);  //Free in error case.
-            }
-        }
-         else {
-            printf("%s\n", get_dialogue(current_location, "invalid_command", sweet_mode));
-        }
+static bool is(const char *a, const char *b) {
+    return strcmp(a, b) == 0;
+}
+
+static void set_location(char *location, const char *new_location) {
+    snprintf(location, LOCATION_SIZE, "%s", new_location);
+}
+
+bool is_valid_location(const char *location) {
+    for (int i = 0; locations[i] != NULL; i++) {
+        if (is(locations[i], location)) return true;
     }
-	 // --- ALEX_RIVERS Location Commands ---
-	else if (strcmp(current_location, "alex_rivers") == 0)
-	{
-		if (!inventory->met_alex) {
-                printf("%s\n", get_dialogue(current_location, "alex_intro", sweet_mode));
-                printf("%s\n", get_dialogue(current_location, "alex_greeting", sweet_mode));
-                printf("%s\n", get_dialogue(current_location, "alex_watch1", sweet_mode));
-                printf("%s\n", get_dialogue(current_location, "alex_talking", sweet_mode));
+    return false;
+}
+
+void new_game(char *location, Inventory *inventory) {
+    set_location(location, "base");
+    memset(inventory, 0, sizeof(*inventory));
+    inventory->money = STARTING_MONEY;
+}
+
+// Списать деньги, если их хватает
+static bool pay(Inventory *inventory, int price) {
+    if (inventory->money < price) {
+        printf("Not enough money.\n");
+        return false;
+    }
+    inventory->money -= price;
+    return true;
+}
+
+// Вторая встреча с Алексом: выбрать два способа поддержать
+static void support_alex(Inventory *inventory, bool sweet_mode) {
+    const char *loc = "alex_rivers";
+    const char *options[] = {
+        get_dialogue(loc, "alex_support1", sweet_mode),
+        get_dialogue(loc, "alex_support2", sweet_mode),
+        get_dialogue(loc, "alex_support3", sweet_mode),
+        get_dialogue(loc, "alex_support4", sweet_mode),
+        get_dialogue(loc, "alex_support5", sweet_mode),
+    };
+    const char *best_support = options[2];
+    int num_options = (int)(sizeof(options) / sizeof(options[0]));
+    const char *choices[2] = {NULL, NULL};
+    int num_choices = 0;
+
+    // Перемешать варианты (Фишер-Йетс)
+    for (int i = num_options - 1; i > 0; i--) {
+        int j = rand() % (i + 1);
+        const char *tmp = options[i];
+        options[i] = options[j];
+        options[j] = tmp;
+    }
+
+    say(loc, "alex_choose", sweet_mode);
+    for (int i = 0; i < num_options; i++) {
+        printf("%d. %s\n", i + 1, options[i]);
+    }
+
+    while (num_choices < 2) {
+        printf("Enter choice %d: ", num_choices + 1);
+        char *input = get_player_input();
+        if (input == NULL) {
+            break; // Ввод закончился
+        }
+        int choice = 0;
+        if (sscanf(input, "%d", &choice) == 1 && choice >= 1 && choice <= num_options) {
+            choices[num_choices++] = options[choice - 1];
+        } else {
+            printf("Invalid choice. Pick a number from the list.\n");
+        }
+        free(input);
+    }
+
+    bool best_chosen = false;
+    printf("You say:\n");
+    for (int i = 0; i < num_choices; i++) {
+        printf("- %s\n", choices[i]);
+        if (choices[i] == best_support) best_chosen = true;
+    }
+
+    if (best_chosen) {
+        say(loc, "alex_thanks", sweet_mode);
+        inventory->money += 40;
+        add_item(inventory, "mask");
+        add_item(inventory, "ticket");
+        inventory->alex_rewarded = true;
+    } else {
+        say(loc, "alex_thanks2", sweet_mode);
+    }
+}
+
+// Вывести текущую локацию и запустить то, что происходит при входе.
+// Некоторые локации - просто сцены, которые сами ведут дальше,
+// а некоторые - концовки.
+GameState enter_location(char *location, Inventory *inventory, bool sweet_mode) {
+    printf("\n---\n");
+
+    for (;;) {
+        const char *next = NULL; // Автоматический переход в другую локацию
+        bool ending = false;
+        const char *loc = location;
+
+        if (is(loc, "base")) {
+            say(loc, "base_intro", sweet_mode);
+            say(loc, "base_directions", sweet_mode);
+            if (inventory->met_patrick) {
+                say(loc, "base_patrick", sweet_mode);
+            } else if (!inventory->met_alex) {
+                say(loc, "base_alex", sweet_mode);
+            }
+            if (!inventory->worker_task && !inventory->met_patrick) {
+                say(loc, "base_worker", sweet_mode);
+            }
+            say(loc, "base_what", sweet_mode);
+            say(loc, "base_hints", sweet_mode);
+        } else if (is(loc, "alex_rivers")) {
+            if (!inventory->met_alex) {
+                say(loc, "alex_intro", sweet_mode);
+                say(loc, "alex_greeting", sweet_mode);
+                say(loc, "alex_watch1", sweet_mode);
+                say(loc, "alex_talking", sweet_mode);
                 for (int i = 0; i < 5; i++) {
-                   char dialogue_key[30];
-                    snprintf(dialogue_key, sizeof(dialogue_key), "alex_blah", i);
-                    char formatted_dialogue[200]; // Adjust size as needed
-
                     if (sweet_mode) {
-                       snprintf(formatted_dialogue, sizeof(formatted_dialogue),  "...blah, blah, blah! (%d minutes)... they seem so passionate!", 5 - i);
+                        printf("...blah, blah, blah! (%d minutes)... they seem so passionate!\n", 5 - i);
+                    } else {
+                        printf("...blah, blah, blah! (%d minutes)\n", 5 - i);
                     }
-                    else {
-                       snprintf(formatted_dialogue, sizeof(formatted_dialogue), "...blah, blah, blah! (%d minutes)", 5 - i);
-                    }
-
-                   printf("%s\n", formatted_dialogue);
-
                 }
-                printf("%s\n", get_dialogue(current_location, "alex_watch2", sweet_mode));
-                printf("%s\n", get_dialogue(current_location, "alex_run", sweet_mode));
-                printf("%s\n", get_dialogue(current_location, "alex_time_wasted", sweet_mode));
-                printf("%s\n", get_dialogue(current_location, "alex_continue", sweet_mode));
+                say(loc, "alex_watch2", sweet_mode);
+                say(loc, "alex_run", sweet_mode);
+                say(loc, "alex_time_wasted", sweet_mode);
+                say(loc, "alex_continue", sweet_mode);
                 inventory->met_alex = true;
                 if (!has_item(inventory, "ticket")) {
-                    printf("%s\n", get_dialogue(current_location, "alex_no_ticket", sweet_mode));
-                }
-                new_location = "base";
-            }
-			else{
-                printf("%s\n", get_dialogue(current_location, "alex_again",sweet_mode));
-                printf("%s\n", get_dialogue(current_location, "alex_you_again", sweet_mode));
-                printf("%s\n", get_dialogue(current_location, "alex_what", sweet_mode));
-
-                char *choices[2];
-                char *support_options[] = {
-                    get_dialogue(current_location, "alex_support1", sweet_mode),
-                    get_dialogue(current_location, "alex_support2", sweet_mode),
-                    get_dialogue(current_location, "alex_support3", sweet_mode),
-                    get_dialogue(current_location, "alex_support4", sweet_mode),
-                    get_dialogue(current_location, "alex_support5", sweet_mode),
-                };
-
-                char *best_support = get_dialogue(current_location, "alex_support3", sweet_mode);
-                bool best_chosen = false;
-                int num_options = sizeof(support_options) / sizeof(support_options[0]);
-                for (int i = 0; i < num_options; i++) {
-                    printf("%d. %s\n", i+1, support_options[i]);
-                }
-
-                for (int i = 0; i < 2; i++) {
-                    int choice = 0;
-
-                    while(1){
-                        printf("Enter choice %d: ", i + 1);
-                        char* input = get_player_input();
-
-                        if(input == NULL){
-                            printf("Invalid Input");
-                            continue;
-                        }
-
-                        if (sscanf(input, "%d", &choice) == 1 && choice >= 1 && choice <= num_options){
-                            choices[i] = support_options[choice-1];
-
-                            if (strcmp(choices[i], best_support) == 0)
-                                best_chosen = true;
-                            free(input);
-                            break;
-                        }
-                        else
-                            printf("Invalid input. Pick a number from the list.\n");
-                            free(input);
-                    }
-                }
-
-                printf("You say:\n");
-                for(int i=0; i<2; ++i) {
-                    printf("- %s\n", choices[i]);
-                }
-
-                if (best_chosen) {
-                    printf("%s\n", get_dialogue(current_location, "alex_thanks", sweet_mode));
-                    inventory->money += 40;
-                    add_item(inventory, "mask");
-                    add_item(inventory, "ticket");
+                    say(loc, "alex_no_ticket", sweet_mode);
+                    next = "base";
                 } else {
-                    printf("%s\n", get_dialogue(current_location, "alex_thanks2", sweet_mode));
+                    next = "security";
                 }
-                printf("%s\n", get_dialogue(current_location, "alex_hints", sweet_mode));
-                new_location = "base";
-
+            } else {
+                say(loc, "alex_again", sweet_mode);
+                say(loc, "alex_you_again", sweet_mode);
+                if (!inventory->alex_rewarded) {
+                    support_alex(inventory, sweet_mode);
+                }
+                say(loc, "alex_what", sweet_mode);
+                say(loc, "alex_hints", sweet_mode);
             }
-	}
-     // --- PATRICK Location Commands ---
-    else if (strcmp(current_location, "Patrick") == 0) {
-        printf("%s\n", get_dialogue(current_location, "patrick_intro", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "patrick_greeting", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "patrick_moves", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "patrick_what", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "patrick_hints", sweet_mode));
-
-        if (strcmp(command, "join") == 0) {
-            // ... (Join quadrobics club - bad ending)
-             printf("You join Patrick's quadrobics club.\n");
-             printf("You spend a year practicing, forgetting about the CN Tower.\n");
-             printf("One day, you're mistaken for a stray cat and taken to a shelter.\n");
-             printf("You're adopted and live a comfy but meaningless life.\n");
-             printf("You become useless. (Bad Ending)\n");
-             new_location = "exit";
-        } else if (strcmp(command, "decline") == 0) {
-            printf("%s\n", get_dialogue(current_location, "patrick_decline", sweet_mode));
-            new_location = "base";
-        } else if (strcmp(command, "back") == 0) {
-            new_location = "base";
-        } else if (strcmp(command, "exit") == 0) {
-            return "exit";
-        } else if(strcmp(command, "restart") == 0){
-            return "restart";
-        }
-        else {
-             printf("%s\n", get_dialogue(current_location, "invalid_command", sweet_mode));
-        }
-    }
-    // --- ENTRANCE Location Commands ---
-    else if (strcmp(current_location, "entrance") == 0)
-    {
-        printf("%s\n", get_dialogue(current_location, "entrance_line", sweet_mode));
-        if (has_item(inventory, "ticket")) {
-            printf("%s\n", get_dialogue(current_location, "entrance_ticket", sweet_mode));
+        } else if (is(loc, "Patrick")) {
+            say(loc, "patrick_intro", sweet_mode);
+            say(loc, "patrick_greeting", sweet_mode);
+            say(loc, "patrick_moves", sweet_mode);
+            say(loc, "patrick_what", sweet_mode);
+            say(loc, "patrick_hints", sweet_mode);
+        } else if (is(loc, "entrance")) {
+            say(loc, "entrance_line", sweet_mode);
+            say(loc, has_item(inventory, "ticket") ? "entrance_ticket" : "entrance_no_ticket", sweet_mode);
+            say(loc, "entrance_what", sweet_mode);
+            say(loc, "entrance_hints", sweet_mode);
+        } else if (is(loc, "ticket_booth")) {
+            say(loc, "ticket_price", sweet_mode);
+            say(loc, "ticket_what", sweet_mode);
+            say(loc, "ticket_hints", sweet_mode);
+        } else if (is(loc, "security")) {
+            say(loc, "security_check", sweet_mode);
+            say(loc, has_item(inventory, "ticket") ? "security_pass" : "security_no_ticket", sweet_mode);
+            say(loc, "security_what", sweet_mode);
+            say(loc, "security_hints", sweet_mode);
+        } else if (is(loc, "elevator")) {
+            say(loc, "elevator_close", sweet_mode);
+            say(loc, "elevator_up", sweet_mode);
+            say(loc, "elevator_pop", sweet_mode);
+            say(loc, "elevator_ding", sweet_mode);
+            next = "lookout";
+        } else if (is(loc, "lookout")) {
+            say(loc, "lookout_view", sweet_mode);
+            say(loc, "lookout_see", sweet_mode);
+            say(loc, "lookout_directions", sweet_mode);
+            say(loc, "lookout_what", sweet_mode);
+            say(loc, "lookout_hints", sweet_mode);
+        } else if (is(loc, "glass_floor")) {
+            say(loc, "glass_scary", sweet_mode);
+            say(loc, "glass_see", sweet_mode);
+            say(loc, "glass_directions", sweet_mode);
+            say(loc, "glass_what", sweet_mode);
+            say(loc, "glass_hints", sweet_mode);
+        } else if (is(loc, "edgewalk_registration")) {
+            say(loc, "edgewalk_desk", sweet_mode);
+            say(loc, has_item(inventory, "edgewalk_ticket") ? "edgewalk_ticket" : "edgewalk_no_ticket", sweet_mode);
+            say(loc, "edgewalk_what", sweet_mode);
+            say(loc, "edgewalk_hints", sweet_mode);
+        } else if (is(loc, "edgewalk_preparation")) {
+            say(loc, "edgewalk_prep", sweet_mode);
+            say(loc, "edgewalk_nervous", sweet_mode);
+            say(loc, "edgewalk_check", sweet_mode);
+            next = "edgewalk";
+        } else if (is(loc, "edgewalk")) {
+            say(loc, "edgewalk_outside", sweet_mode);
+            say(loc, "edgewalk_exciting", sweet_mode);
+            say(loc, "edgewalk_win", sweet_mode);
+            ending = true;
+        } else if (is(loc, "gift_shop")) {
+            say(loc, "gift_souvenirs", sweet_mode);
+            if (!has_item(inventory, "mask")) {
+                say(loc, "gift_mask", sweet_mode);
+            }
+            say(loc, "gift_what", sweet_mode);
+            say(loc, "gift_hints", sweet_mode);
+        } else if (is(loc, "information_booth")) {
+            say(loc, "info_brochures", sweet_mode);
+            say(loc, "info_staff", sweet_mode);
+            say(loc, "info_what", sweet_mode);
+            say(loc, "info_hints", sweet_mode);
+        } else if (is(loc, "worker")) {
+            say(loc, "worker_tired", sweet_mode);
+            say(loc, "worker_help", sweet_mode);
+            say(loc, "worker_start", sweet_mode);
+            for (int i = 1; i <= 4; i++) {
+                printf("You carry box %d to the storage room...\n", i);
+            }
+            say(loc, "worker_fifth", sweet_mode);
+            say(loc, "worker_what", sweet_mode);
+            say(loc, "worker_hints", sweet_mode);
+        } else if (is(loc, "open_box")) {
+            say(loc, "box_contents", sweet_mode);
+            say(loc, "box_what", sweet_mode);
+            say(loc, "box_hints", sweet_mode);
+        } else if (is(loc, "caught_stealing")) {
+            say(loc, "caught_seen", sweet_mode);
+            say(loc, "caught_worker", sweet_mode);
+            say(loc, "caught_security", sweet_mode);
+            say(loc, "caught_what", sweet_mode);
+            say(loc, "caught_hints", sweet_mode);
+        } else if (is(loc, "storage_room")) {
+            say(loc, "storage_thanks", sweet_mode);
+            if (!inventory->worker_task) { // Платят только один раз
+                say(loc, "storage_reward", sweet_mode);
+                say(loc, "storage_money", sweet_mode);
+                inventory->money += 20;
+                inventory->worker_task = true;
+            }
+            say(loc, "storage_what", sweet_mode);
+            say(loc, "storage_hints", sweet_mode);
+        } else if (is(loc, "just_a_chill_guy")) {
+            say(loc, "chill_laughing", sweet_mode);
+            if (has_item(inventory, "mask") && has_item(inventory, "bible")) {
+                say(loc, "chill_ready", sweet_mode);
+                printf("Hints: 'Go West', 'Use Mask', 'Use Bible', 'Ask About Corner', 'Back', 'Exit', 'Restart'.\n");
+            } else if (has_item(inventory, "bible") && !has_item(inventory, "mask")) {
+                say(loc, "chill_quadrobists_gone", sweet_mode);
+                say(loc, "chill_what", sweet_mode);
+                say(loc, "chill_hints1", sweet_mode);
+            } else if (inventory->used_bible) {
+                say(loc, "chill_scared_quadrobists", sweet_mode);
+                say(loc, "chill_what", sweet_mode);
+                say(loc, "chill_hints2", sweet_mode);
+            } else {
+                say(loc, "chill_what", sweet_mode);
+                say(loc, "chill_hints3", sweet_mode);
+            }
+        } else if (is(loc, "corner")) {
+            if (has_item(inventory, "mask") && inventory->used_mask) {
+                say(loc, "corner_peek", sweet_mode);
+                say(loc, "corner_back", sweet_mode);
+                inventory->used_mask = false;
+                next = "just_a_chill_guy";
+            } else if (inventory->used_bible) {
+                say(loc, "corner_empty", sweet_mode);
+                next = "just_a_chill_guy";
+            } else {
+                say(loc, "corner_seen", sweet_mode);
+                say(loc, "corner_join", sweet_mode);
+                say(loc, "corner_quadrobist", sweet_mode);
+                next = "quadrobics_base";
+            }
+        } else if (is(loc, "quadrobics_base")) {
+            say(loc, "quadrobics_move", sweet_mode);
+            say(loc, "quadrobics_hints", sweet_mode);
+        } else if (is(loc, "alex_rivers_quadrobics")) {
+            printf("You approach Alex Rivers, moving like a quadrobist.\n");
+            printf("Alex is startled, drops their phone, and their recording is ruined.\n");
+            printf("You've ruined their day. (Bad Ending)\n");
+            ending = true;
+        } else if (is(loc, "scare_alex")) {
+            say(loc, "scare_success", sweet_mode);
+            say(loc, "scare_drop", sweet_mode);
+            say(loc, "scare_hints", sweet_mode);
+        } else if (is(loc, "phone_found")) {
+            say(loc, "phone_run", sweet_mode);
+            say(loc, "phone_what", sweet_mode);
+            say(loc, "phone_hints", sweet_mode);
+        } else if (is(loc, "roof")) {
+            say(loc, "roof_jump", sweet_mode);
+            printf("(Bad Ending)\n");
+            ending = true;
         } else {
-            printf("%s\n", get_dialogue(current_location, "entrance_no_ticket", sweet_mode));
+            printf("Invalid location: %s\n", loc);
+            next = "base";
         }
-        printf("%s\n", get_dialogue(current_location, "entrance_what", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "entrance_hints", sweet_mode));
 
+        if (ending) {
+            printf("---\n");
+            return GAME_OVER;
+        }
+        if (next == NULL) {
+            break;
+        }
+        set_location(location, next);
+    }
 
-        if (strcmp(command, "go north") == 0 && has_item(inventory, "ticket")) {
-            new_location = "security";
-        } else if (strcmp(command, "go west") == 0) {
+    printf("---\n");
+    return GAME_CONTINUE;
+}
+
+static void display_help(bool sweet_mode) {
+    say("any", "help1", sweet_mode);
+    say("any", "help2", sweet_mode);
+    say("any", "help3", sweet_mode);
+    say("any", "help4", sweet_mode);
+    say("any", "help5", sweet_mode);
+}
+
+// Прочитать строку в меню отладки (NULL, если ввод закончился)
+static char *debug_input(const char *prompt) {
+    printf("%s", prompt);
+    return get_player_input();
+}
+
+// Скрытое меню отладки, как в Python-версии.
+// Возвращает GAME_ENTER, если локация сменилась, иначе GAME_CONTINUE.
+static GameState debug_menu(char *location, Inventory *inventory, bool *sweet_mode) {
+    for (;;) {
+        printf("\n--- Debug Menu ---\n");
+        printf("1. Add Money\n");
+        printf("2. Add Item\n");
+        printf("3. Remove Item\n");
+        printf("4. Set Location\n");
+        printf("5. View Inventory\n");
+        printf("6. Exit Debug Menu\n");
+        printf("7. Toggle Sweet+ Mode\n");
+
+        char *choice = debug_input("Enter choice: ");
+        if (choice == NULL) {
+            return GAME_CONTINUE;
+        }
+
+        if (is(choice, "1")) {
+            char *amount = debug_input("Enter amount of money to add: ");
+            int value = 0;
+            if (amount != NULL && sscanf(amount, "%d", &value) == 1) {
+                inventory->money += value;
+                printf("Added $%d. Current money: $%d\n", value, inventory->money);
+            } else {
+                printf("Invalid amount.\n");
+            }
+            free(amount);
+        } else if (is(choice, "2") || is(choice, "3")) {
+            bool adding = is(choice, "2");
+            printf("Available items:");
+            for (int i = 0; valid_items[i] != NULL; i++) {
+                printf("%s %s", i == 0 ? "" : ",", valid_items[i]);
+            }
+            printf("\n");
+            char *item = debug_input(adding ? "Enter item name to add: " : "Enter item name to remove: ");
+            bool known = false;
+            for (int i = 0; item != NULL && valid_items[i] != NULL; i++) {
+                if (is(item, valid_items[i])) known = true;
+            }
+            if (!known) {
+                printf("Invalid item name.\n");
+            } else if (adding) {
+                add_item(inventory, item);
+                printf("%s added to inventory.\n", item);
+            } else {
+                remove_item(inventory, item);
+                printf("%s removed from inventory.\n", item);
+            }
+            free(item);
+        } else if (is(choice, "4")) {
+            printf("Locations:");
+            for (int i = 0; locations[i] != NULL; i++) {
+                printf("%s %s", i == 0 ? "" : ",", locations[i]);
+            }
+            printf("\n");
+            char *new_location = debug_input("Enter the location to set: ");
+            if (new_location != NULL && is(new_location, "patrick")) {
+                new_location[0] = 'P'; // Ввод в нижнем регистре, а имя локации - нет
+            }
+            if (new_location != NULL && is_valid_location(new_location)) {
+                set_location(location, new_location);
+                free(new_location);
+                free(choice);
+                return GAME_ENTER;
+            }
+            printf("Invalid location.\n");
+            free(new_location);
+        } else if (is(choice, "5")) {
+            display_inventory(inventory);
+        } else if (is(choice, "6")) {
+            printf("Exiting debug menu...\n");
+            free(choice);
+            return GAME_CONTINUE;
+        } else if (is(choice, "7")) {
+            *sweet_mode = !*sweet_mode;
+            printf("Sweet+ Mode %s\n", *sweet_mode ? "enabled" : "disabled");
+        } else {
+            printf("Invalid choice.\n");
+        }
+        free(choice);
+    }
+}
+
+// Обработать команду игрока (уже в нижнем регистре и без лишних пробелов).
+GameState process_command(const char *command, char *location, Inventory *inventory, bool *sweet_mode) {
+    const char *loc = location;
+    const bool sweet = *sweet_mode;
+    const char *new_location = NULL;
+
+    // --- Команды, которые работают везде ---
+    if (is(command, "")) {
+        return GAME_CONTINUE;
+    } else if (is(command, "exit") || is(command, "quit")) {
+        return GAME_EXIT;
+    } else if (is(command, "restart")) {
+        return GAME_RESTART;
+    } else if (is(command, "help")) {
+        display_help(sweet);
+        return GAME_CONTINUE;
+    } else if (is(command, "inventory")) {
+        display_inventory(inventory);
+        return GAME_CONTINUE;
+    } else if (is(command, "look")) {
+        return GAME_ENTER;
+    } else if (is(command, "save")) {
+        save_game(location, inventory, SAVE_FILE);
+        return GAME_CONTINUE;
+    } else if (is(command, "load")) {
+        return load_game(location, inventory, SAVE_FILE) ? GAME_ENTER : GAME_CONTINUE;
+    } else if (is(command, "debug")) {
+        return debug_menu(location, inventory, sweet_mode);
+    }
+
+    // --- Команды локаций ---
+    if (is(loc, "base")) {
+        if (is(command, "go north")) {
+            new_location = "entrance";
+        } else if (is(command, "go east")) {
+            new_location = "gift_shop";
+        } else if (is(command, "go west")) {
+            new_location = inventory->met_patrick ? "Patrick" : "alex_rivers";
+        } else if (is(command, "go south")) {
+            if (!inventory->worker_task && !inventory->met_patrick) {
+                new_location = "worker";
+            } else {
+                printf("There's nothing to do there anymore.\n");
+            }
+        } else if (is(command, "look around")) {
+            say(loc, "look_around_base", sweet);
+        } else {
+            say(loc, "invalid_command", sweet);
+        }
+    } else if (is(loc, "alex_rivers")) {
+        if (is(command, "compliment alex")) {
+            say(loc, "alex_compliment", sweet);
+            say(loc, "alex_nothing", sweet);
+            new_location = "base";
+        } else if (is(command, "ignore") || is(command, "back")) {
+            say(loc, "alex_ignore", sweet);
+            new_location = "base";
+        } else {
+            say(loc, "invalid_command", sweet);
+        }
+    } else if (is(loc, "Patrick")) {
+        if (is(command, "join")) {
+            say(loc, "patrick_join1", sweet);
+            say(loc, "patrick_join2", sweet);
+            say(loc, "patrick_join3", sweet);
+            say(loc, "patrick_join4", sweet);
+            say(loc, "patrick_join5", sweet);
+            return GAME_OVER;
+        } else if (is(command, "decline")) {
+            say(loc, "patrick_decline", sweet);
+            new_location = "base";
+        } else if (is(command, "back")) {
+            new_location = "base";
+        } else {
+            say(loc, "invalid_command", sweet);
+        }
+    } else if (is(loc, "entrance")) {
+        if (is(command, "go north")) {
+            if (has_item(inventory, "ticket")) {
+                new_location = "security";
+            } else {
+                say(loc, "entrance_no_ticket", sweet);
+            }
+        } else if (is(command, "go west")) {
             new_location = "ticket_booth";
-        } else if (strcmp(command, "back") == 0) {
+        } else if (is(command, "back")) {
             new_location = "base";
-        } else if (strcmp(command, "inventory") == 0) {
-            display_inventory(inventory);
-        }
-        else if (strcmp(command, "exit") == 0) {
-            return "exit"; // Let main handle exiting
-        }
-        else if (strcmp(command, "restart") == 0) {
-            return "restart"; // Let main handle restarting.
-        }
-
-        else {
-            printf("Invalid command or action not allowed. Try 'Help'.\n");
-        }
-    }
-	// --- TICKET_BOOTH Location Commands ---
-    else if (strcmp(current_location, "ticket_booth") == 0) {
-        printf("%s\n", get_dialogue(current_location, "ticket_price", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "ticket_what", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "ticket_hints", sweet_mode));
-
-        if (strcmp(command, "buy ticket") == 0) {
-            if (inventory->money >= 40) {
-                inventory->money -= 40;
-                add_item(inventory, "ticket");
-                printf("You bought a ticket for $40.\n");
-            } else {
-                printf("Not enough money to buy a ticket.\n");
-            }
-        } else if (strcmp(command, "back") == 0) {
-            new_location = "entrance";
-        }
-         else if (strcmp(command, "inventory") == 0) {
-            display_inventory(inventory);
-        }
-        else if (strcmp(command, "exit") == 0)
-        {
-            return "exit";
-        }
-        else if (strcmp(command, "restart") == 0)
-        {
-            return "restart";
-        }
-        else {
-            printf("Invalid command. Try 'Help'.\n");
-        }
-    }
-    // --- SECURITY Location Commands ---
-    else if(strcmp(current_location, "security") == 0){
-        printf("%s\n", get_dialogue(current_location, "security_check", sweet_mode));
-        if(has_item(inventory,"ticket")){
-             printf("%s\n", get_dialogue(current_location, "security_pass", sweet_mode));
-        }
-        else{
-             printf("%s\n", get_dialogue(current_location, "security_no_ticket", sweet_mode));
-        }
-        printf("%s\n", get_dialogue(current_location, "security_what", sweet_mode));
-
-        printf("%s\n", get_dialogue(current_location, "security_hints", sweet_mode));
-
-        if (strcmp(command, "go north") == 0 && has_item(inventory, "ticket"))
-        {
-            new_location = "elevator";
-        }
-        else if (strcmp(command,"back") == 0)
-        {
-            new_location = "entrance";
-        }
-        else if (strcmp(command, "inventory") == 0)
-        {
-            display_inventory(inventory);
-        }
-        else if (strcmp(command, "exit") == 0)
-        {
-            return "exit";
-        }
-        else if (strcmp(command, "restart") == 0)
-        {
-            return "restart";
-        }
-        else
-        {
-             printf("Invalid command or action not allowed. Try 'Help'.\n");
-        }
-    }
-    // --- ELEVATOR Location Commands ---
-    else if (strcmp(current_location, "elevator") == 0) {
-        // Elevator is mostly descriptive.  No commands here, just transitions.
-        printf("%s\n", get_dialogue(current_location, "elevator_close", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "elevator_up", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "elevator_pop", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "elevator_ding", sweet_mode));
-        new_location = "lookout"; // Automatically go to the LookOut level
-    }
-    // --- LOOKOUT Location Commands ---
-    else if (strcmp(current_location, "lookout") == 0) {
-        printf("%s\n", get_dialogue(current_location, "lookout_view", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "lookout_see", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "lookout_directions", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "lookout_what", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "lookout_hints", sweet_mode));
-
-
-        if (strcmp(command, "go down") == 0) {
-            new_location = "glass_floor";
-        } else if (strcmp(command, "go east") == 0) {
-            new_location = "information_booth";
-        } else if (strcmp(command, "look around") == 0) {
-            printf("You take in the magnificent view of Toronto and take some pictures.\n");
-        } else if (strcmp(command, "inventory") == 0){
-            display_inventory(inventory);
-        }
-         else if (strcmp(command, "exit") == 0)
-        {
-            return "exit";
-        }
-        else if (strcmp(command, "restart") == 0)
-        {
-            return "restart";
-        }
-        else {
-            printf("Invalid command. Try 'Help'.\n");
-        }
-    }
-    // --- GLASS_FLOOR Location Commands ---
-    else if (strcmp(current_location, "glass_floor") == 0) {
-        printf("%s\n", get_dialogue(current_location, "glass_scary", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "glass_see", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "glass_directions", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "glass_what", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "glass_hints", sweet_mode));
-
-
-        if (strcmp(command, "go up") == 0) {
-            new_location = "lookout";
-        } else if (strcmp(command, "go west") == 0) {
-            new_location = "edgewalk_registration";
-        } else if (strcmp(command, "look down") == 0) {
-            printf("It's a long way down!  You feel a bit dizzy.\n");
-        }
-         else if (strcmp(command, "inventory") == 0){
-            display_inventory(inventory);
-        }
-         else if (strcmp(command, "exit") == 0)
-        {
-            return "exit";
-        }
-        else if (strcmp(command, "restart") == 0)
-        {
-            return "restart";
-        }
-        else {
-            printf("Invalid command. Try 'Help'.\n");
-        }
-    }
-    // --- EDGEWALK_REGISTRATION Location Commands ---
-    else if (strcmp(current_location, "edgewalk_registration") == 0) {
-        printf("%s\n", get_dialogue(current_location, "edgewalk_desk", sweet_mode));
-        if (has_item(inventory, "edgewalk_ticket")) {
-            printf("%s\n", get_dialogue(current_location, "edgewalk_ticket", sweet_mode));
         } else {
-            printf("%s\n", get_dialogue(current_location, "edgewalk_no_ticket", sweet_mode));
+            say(loc, "invalid_command", sweet);
         }
-
-        printf("%s\n", get_dialogue(current_location, "edgewalk_what", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "edgewalk_hints", sweet_mode));
-
-        if (strcmp(command, "buy ticket") == 0) {
-            if (inventory->money >= 195) {
-                inventory->money -= 195;
-                add_item(inventory, "edgewalk_ticket");
-                printf("You bought an EdgeWalk ticket for $195.\n");
-            } else {
-                printf("Not enough money to buy an EdgeWalk ticket.\n");
+    } else if (is(loc, "ticket_booth")) {
+        if (is(command, "buy ticket")) {
+            if (has_item(inventory, "ticket")) {
+                printf("You already have a ticket.\n");
+            } else if (pay(inventory, TICKET_PRICE)) {
+                add_item(inventory, "ticket");
+                printf("You bought a ticket for $%d.\n", TICKET_PRICE);
             }
-        } else if (strcmp(command, "go north") == 0 && has_item(inventory, "edgewalk_ticket")) {
-            new_location = "edgewalk_preparation";
-        } else if (strcmp(command, "back") == 0) {
+        } else if (is(command, "back")) {
+            new_location = "entrance";
+        } else {
+            say(loc, "invalid_command", sweet);
+        }
+    } else if (is(loc, "security")) {
+        if (is(command, "go north")) {
+            if (has_item(inventory, "ticket")) {
+                new_location = "elevator";
+            } else {
+                say(loc, "security_no_ticket", sweet);
+            }
+        } else if (is(command, "back")) {
+            new_location = "entrance";
+        } else {
+            say(loc, "invalid_command", sweet);
+        }
+    } else if (is(loc, "lookout")) {
+        if (is(command, "go down")) {
             new_location = "glass_floor";
+        } else if (is(command, "go east")) {
+            new_location = "information_booth";
+        } else if (is(command, "go back") || is(command, "back")) {
+            say(loc, "lookout_down", sweet);
+            new_location = "base";
+        } else if (is(command, "look around")) {
+            say(loc, "lookout_look", sweet);
+        } else {
+            say(loc, "invalid_command", sweet);
         }
-        else if (strcmp(command, "inventory") == 0){
-            display_inventory(inventory);
+    } else if (is(loc, "glass_floor")) {
+        if (is(command, "go up") || is(command, "back")) {
+            new_location = "lookout";
+        } else if (is(command, "go west")) {
+            new_location = "edgewalk_registration";
+        } else if (is(command, "go east")) {
+            new_location = "just_a_chill_guy";
+        } else if (is(command, "look down")) {
+            say(loc, "glass_look_down", sweet);
+        } else {
+            say(loc, "invalid_command", sweet);
         }
-         else if (strcmp(command, "exit") == 0)
-        {
-            return "exit";
+    } else if (is(loc, "edgewalk_registration")) {
+        if (is(command, "buy ticket") || is(command, "buy edgewalk ticket")) {
+            if (has_item(inventory, "edgewalk_ticket")) {
+                printf("You already have an EdgeWalk ticket.\n");
+            } else if (pay(inventory, EDGEWALK_PRICE)) {
+                add_item(inventory, "edgewalk_ticket");
+                printf("You bought an EdgeWalk ticket for $%d.\n", EDGEWALK_PRICE);
+            }
+        } else if (is(command, "go north")) {
+            if (has_item(inventory, "edgewalk_ticket")) {
+                new_location = "edgewalk_preparation";
+            } else {
+                say(loc, "edgewalk_no_ticket", sweet);
+            }
+        } else if (is(command, "back")) {
+            new_location = "glass_floor";
+        } else {
+            say(loc, "invalid_command", sweet);
         }
-        else if (strcmp(command, "restart") == 0)
-        {
-            return "restart";
-        }
-        else {
-            printf("Invalid command or action not allowed. Try 'Help'.\n");
-        }
-    }
-    // --- EDGEWALK_PREPARATION Location Commands ---
-    else if (strcmp(current_location, "edgewalk_preparation") == 0) {
-        printf("%s\n", get_dialogue(current_location, "edgewalk_prep", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "edgewalk_nervous", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "edgewalk_check", sweet_mode));
-
-        new_location = "edgewalk"; // Automatically transition to the EdgeWalk
-    }
-    // --- EDGEWALK Location Commands ---
-    else if (strcmp(current_location, "edgewalk") == 0) {
-        printf("%s\n", get_dialogue(current_location, "edgewalk_outside", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "edgewalk_exciting", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "edgewalk_win", sweet_mode));
-        new_location = "exit"; // Winning condition!
-    }
-    // --- GIFT_SHOP Location Commands ---
-    else if (strcmp(current_location, "gift_shop") == 0) {
-        printf("%s\n", get_dialogue(current_location, "gift_souvenirs", sweet_mode));
-        if (!has_item(inventory, "mask")) {
-            printf("%s\n", get_dialogue(current_location, "gift_mask", sweet_mode));
-        }
-        printf("%s\n", get_dialogue(current_location, "gift_what", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "gift_hints", sweet_mode));
-
-        if (strcmp(command, "buy postcards") == 0) {
-            if (inventory->money >= 5) {
-                inventory->money -= 5;
+    } else if (is(loc, "gift_shop")) {
+        if (is(command, "buy postcards")) {
+            if (pay(inventory, 5)) {
                 add_item(inventory, "postcards");
                 printf("You bought postcards for $5.\n");
-            } else {
-                printf("Not enough money to buy postcards.\n");
             }
-        } else if (strcmp(command, "buy souvenir") == 0) {
-            if (inventory->money >= 15) {
-                inventory->money -= 15;
+        } else if (is(command, "buy souvenir")) {
+            if (pay(inventory, 15)) {
                 add_item(inventory, "souvenir");
                 printf("You bought a CN Tower souvenir for $15.\n");
-            } else {
-                printf("Not enough money to buy a souvenir.\n");
             }
-        } else if (strcmp(command, "buy mask") == 0) {
-            if (inventory->money >= 20) {
-                inventory->money -= 20;
+        } else if (is(command, "buy mask")) {
+            if (has_item(inventory, "mask")) {
+                printf("You already have a mask.\n");
+            } else if (pay(inventory, 20)) {
                 add_item(inventory, "mask");
                 printf("You bought a mask for $20.\n");
-            } else {
-                printf("Not enough money to buy a mask.\n");
             }
-        } else if (strcmp(command, "back") == 0) {
+        } else if (is(command, "back")) {
             new_location = "base";
+        } else {
+            say(loc, "invalid_command", sweet);
         }
-        else if (strcmp(command, "inventory") == 0){
-            display_inventory(inventory);
-        }
-         else if (strcmp(command, "exit") == 0)
-        {
-            return "exit";
-        }
-        else if (strcmp(command, "restart") == 0)
-        {
-            return "restart";
-        }
-        else {
-            printf("Invalid command. Try 'Help'.\n");
-        }
-    }
-	 // --- INFORMATION_BOOTH Location Commands ---
-    else if (strcmp(current_location, "information_booth") == 0) {
-        printf("%s\n", get_dialogue(current_location, "info_brochures", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "info_staff", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "info_what", sweet_mode));
-		printf("%s\n", get_dialogue(current_location, "info_hints", sweet_mode));
-
-        if (strcmp(command, "ask about history") == 0) {
-             printf("%s\n", get_dialogue(current_location, "history1", sweet_mode));
-             printf("%s\n", get_dialogue(current_location, "history2", sweet_mode));
-             printf("%s\n", get_dialogue(current_location, "history3", sweet_mode));
-        } else if (strcmp(command, "ask about building") == 0) {
-            printf("%s\n", get_dialogue(current_location, "building1", sweet_mode));
-            printf("%s\n", get_dialogue(current_location, "building2", sweet_mode));
-            printf("%s\n", get_dialogue(current_location, "building3", sweet_mode));
-        } else if (strcmp(command, "back") == 0) {
+    } else if (is(loc, "information_booth")) {
+        if (is(command, "ask about history")) {
+            print_cn_tower_art();
+            say(loc, "history1", sweet);
+            say(loc, "history2", sweet);
+            say(loc, "history3", sweet);
+        } else if (is(command, "ask about building")) {
+            print_cn_tower_art();
+            say(loc, "building1", sweet);
+            say(loc, "building2", sweet);
+            say(loc, "building3", sweet);
+        } else if (is(command, "return phone")) {
+            if (has_item(inventory, "alex_phone") && !inventory->phone_returned) {
+                say(loc, "info_phone1", sweet);
+                say(loc, "info_phone2", sweet);
+                remove_item(inventory, "alex_phone");
+                inventory->money += PHONE_REWARD;
+                inventory->phone_returned = true;
+            } else {
+                say(loc, "info_no_phone", sweet);
+            }
+        } else if (is(command, "back")) {
             new_location = "lookout";
+        } else {
+            say(loc, "invalid_command", sweet);
         }
-        else if (strcmp(command, "inventory") == 0){
-            display_inventory(inventory);
-        }
-         else if (strcmp(command, "exit") == 0)
-        {
-            return "exit";
-        }
-        else if (strcmp(command, "restart") == 0)
-        {
-            return "restart";
-        }
-        else {
-            printf("Invalid command. Try 'Help'.\n");
-        }
-    }
-	// --- WORKER Location Commands ---
-    else if (strcmp(current_location, "worker") == 0) {
-        printf("%s\n", get_dialogue(current_location, "worker_tired", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "worker_help", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "worker_start", sweet_mode));
-
-        for (int i = 1; i <= 4; i++) {
-            char dialogue_key[30];
-            snprintf(dialogue_key, sizeof(dialogue_key), "worker_carry", i);
-            char formatted_dialogue[200];
-
-            if(sweet_mode){
-                snprintf(formatted_dialogue, sizeof(formatted_dialogue), "You carry box %d to the storage room...", i);
-            }
-            else{
-                snprintf(formatted_dialogue, sizeof(formatted_dialogue), "You carry box %d to the storage room...", i);
-            }
-
-            printf("%s\n", formatted_dialogue);
-
-        }
-        printf("%s\n", get_dialogue(current_location, "worker_fifth", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "worker_what", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "worker_hints", sweet_mode));
-
-
-        if (strcmp(command, "look inside") == 0) {
+    } else if (is(loc, "worker")) {
+        if (is(command, "look inside") || is(command, "help worker")) {
             new_location = "open_box";
-        } else if (strcmp(command, "continue") == 0) {
+        } else if (is(command, "continue")) {
             new_location = "storage_room";
+        } else if (is(command, "back")) {
+            new_location = "base";
+        } else {
+            say(loc, "invalid_command", sweet);
         }
-        else if (strcmp(command, "inventory") == 0){
-            display_inventory(inventory);
-        }
-         else if (strcmp(command, "exit") == 0)
-        {
-            return "exit";
-        }
-        else if (strcmp(command, "restart") == 0)
-        {
-            return "restart";
-        }
-        else {
-            printf("Invalid command. Try 'Help'.\n");
-        }
-    }
-	 // --- OPEN_BOX Location Commands ---
-    else if (strcmp(current_location, "open_box") == 0) {
-        printf("%s\n", get_dialogue(current_location, "box_contents", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "box_what", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "box_hints", sweet_mode));
-
-
-        if (strcmp(command, "take nothing") == 0) {
+    } else if (is(loc, "open_box")) {
+        if (is(command, "take nothing")) {
             printf("You decide to leave the box alone and continue helping the worker.\n");
             new_location = "storage_room";
-        } else if (strcmp(command, "take money") == 0) {
+        } else if (is(command, "take money")) {
             inventory->money += 40;
             printf("You discreetly take the money from the box.\n");
             new_location = "caught_stealing";
-        } else if (strcmp(command, "take book") == 0) {
+        } else if (is(command, "take book")) {
             add_item(inventory, "bible");
             printf("You take the book from the box. It's a Bible.\n");
             new_location = "storage_room";
-        } else if (strcmp(command, "take mask") == 0) {
+        } else if (is(command, "take mask")) {
             add_item(inventory, "mask");
             printf("You take the mask from the box.\n");
             new_location = "storage_room";
+        } else {
+            say(loc, "invalid_command", sweet);
         }
-        else if (strcmp(command, "inventory") == 0){
-            display_inventory(inventory);
-        }
-         else if (strcmp(command, "exit") == 0)
-        {
-            return "exit";
-        }
-        else if (strcmp(command, "restart") == 0)
-        {
-            return "restart";
-        }
-        else {
-            printf("Invalid command. Try 'Help'.\n");
-        }
-    }
-	// --- CAUGHT_STEALING Location Commands ---
-    else if (strcmp(current_location, "caught_stealing") == 0) {
-        printf("%s\n", get_dialogue(current_location, "caught_seen", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "caught_worker", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "caught_security", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "caught_what", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "caught_hints", sweet_mode));
-
-        if (strcmp(command, "tell truth") == 0) {
-            printf("You confess to taking the money. The police are surprisingly understanding.\n");
-            printf("They let you go with a warning, but you feel a bit guilty.\n");
-             inventory->met_alex = true;
-             inventory->met_patrick = true;
+    } else if (is(loc, "caught_stealing")) {
+        if (is(command, "tell truth")) {
+            printf("You confess to taking the money. The police let you go with a warning.\n");
             printf("Next day, you go to the CN Tower again, but missed Alex Rivers and a chance for a free ticket.\n");
             printf("You see a strange guy near the entrance.\n");
+            inventory->met_alex = true;
+            inventory->met_patrick = true;
             new_location = "base";
-        } else if (strcmp(command, "bribe") == 0) {
+        } else if (is(command, "bribe")) {
             if (inventory->money >= 50) {
                 inventory->money -= 50;
-                printf("You offer the officer a bribe.  They reluctantly accept.\n");
-                printf("Officer: \"Alright, get back to the CN Tower.  And don't let me catch you again.\"\n");
+                printf("You offer the officer a bribe. They reluctantly accept.\n");
+                printf("Officer: \"Alright, get back to the CN Tower. And don't let me catch you again.\"\n");
                 new_location = "base";
             } else {
                 printf("You don't have enough money to bribe the officer.\n");
             }
-        } else if (strcmp(command, "lie") == 0) {
+        } else if (is(command, "lie")) {
             printf("You try to lie your way out of it, but the police don't believe you.\n");
-            printf("You're deported.  No more CN Tower for you. (Bad Ending)\n");
-            new_location = "exit";  // Game over
+            printf("You're deported. No more CN Tower for you. (Bad Ending)\n");
+            return GAME_OVER;
+        } else {
+            say(loc, "invalid_command", sweet);
         }
-        else if (strcmp(command, "inventory") == 0){
-            display_inventory(inventory);
-        }
-         else if (strcmp(command, "exit") == 0)
-        {
-            return "exit";
-        }
-        else if (strcmp(command, "restart") == 0)
-        {
-            return "restart";
-        }
-        else {
-            printf("Invalid command. Try 'Help'.\n");
-        }
-    }
-    // --- STORAGE_ROOM Location Commands ---
-    else if (strcmp(current_location, "storage_room") == 0) {
-         printf("%s\n", get_dialogue(current_location, "storage_thanks", sweet_mode));
-         printf("%s\n", get_dialogue(current_location, "storage_reward", sweet_mode));
-         printf("%s\n", get_dialogue(current_location, "storage_money", sweet_mode));
-        inventory->money += 20;
-        inventory->worker_task = true;
-        printf("%s\n", get_dialogue(current_location, "storage_what", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "storage_hints", sweet_mode));
-
-        if (strcmp(command, "back") == 0) {
+    } else if (is(loc, "storage_room")) {
+        if (is(command, "back")) {
             new_location = "base";
+        } else {
+            say(loc, "invalid_command", sweet);
         }
-        else if (strcmp(command, "inventory") == 0){
-            display_inventory(inventory);
-        }
-        else if (strcmp(command, "exit") == 0)
-        {
-            return "exit";
-        }
-        else if (strcmp(command, "restart") == 0)
-        {
-            return "restart";
-        }
-        else {
-            printf("Invalid command. Try 'Help'.\n");
-        }
-    }
-    // --- JUST_A_CHILL_GUY Location Commands ---
-    else if (strcmp(current_location, "just_a_chill_guy") == 0) {
-        printf("%s\n", get_dialogue(current_location, "chill_laughing", sweet_mode));
-        if (has_item(inventory, "mask") && has_item(inventory, "bible")) {
-            printf("%s\n", get_dialogue(current_location, "chill_ready", sweet_mode));
-            printf("Hints: 'Go West', 'Back', 'Exit', 'Restart'.\n");
-        } else if (has_item(inventory, "bible") && !has_item(inventory, "mask")) {
-            printf("%s\n", get_dialogue(current_location, "chill_quadrobists_gone", sweet_mode));
-            printf("%s\n", get_dialogue(current_location, "chill_what", sweet_mode));
-            printf("%s\n", get_dialogue(current_location, "chill_hints1", sweet_mode));
-        } else if (inventory->used_bible) {
-            printf("%s\n", get_dialogue(current_location, "chill_scared_quadrobists", sweet_mode));
-            printf("%s\n", get_dialogue(current_location, "chill_what", sweet_mode));
-            printf("%s\n", get_dialogue(current_location, "chill_hints2", sweet_mode));
-        }
-        else {
-             printf("%s\n", get_dialogue(current_location, "chill_what", sweet_mode));
-             printf("%s\n", get_dialogue(current_location, "chill_hints3", sweet_mode));
-        }
-
-
-        if (strcmp(command, "use mask") == 0) {
+    } else if (is(loc, "just_a_chill_guy")) {
+        if (is(command, "use mask")) {
             if (has_item(inventory, "mask")) {
                 inventory->used_mask = true;
                 new_location = "corner";
             } else {
                 printf("You don't have a mask.\n");
             }
-        } else if (strcmp(command, "use bible") == 0) {
+        } else if (is(command, "use bible")) {
             if (has_item(inventory, "bible")) {
                 printf("You wave the Bible around. The quadrobists scatter in fear!\n");
-                remove_item(inventory, "bible"); // Remove the Bible after use
-                inventory->used_bible = true; // Mark as used
+                inventory->used_bible = true;
             } else {
                 printf("You don't have a Bible.\n");
             }
-        } else if (strcmp(command, "go forward") == 0) {
+        } else if (is(command, "go forward")) {
             new_location = "corner";
-        } else if (strcmp(command, "ask about corner") == 0) {
-            printf("Just a Chill Guy: \"Just some quadrobists practicing.  Nothing to worry about... unless you're scared.\"\n");
-        } else if (strcmp(command, "go west") == 0 && has_item(inventory, "mask") && has_item(inventory, "bible")) {
-            new_location = "scare_alex";  // Go to scare Alex
-        }
-        else if (strcmp(command, "back") == 0) {
+        } else if (is(command, "ask about corner")) {
+            printf("Just a Chill Guy: \"Just some quadrobists practicing. Nothing to worry about... unless you're scared.\"\n");
+        } else if (is(command, "go west")) {
+            if (has_item(inventory, "mask") && has_item(inventory, "bible")) {
+                new_location = "scare_alex";
+            } else {
+                printf("Just a Chill Guy: \"You'll need a mask and a Bible to scare Alex.\"\n");
+            }
+        } else if (is(command, "back")) {
             new_location = "glass_floor";
-        }
-         else if (strcmp(command, "inventory") == 0){
-            display_inventory(inventory);
-        }
-         else if (strcmp(command, "exit") == 0)
-        {
-            return "exit";
-        }
-        else if (strcmp(command, "restart") == 0)
-        {
-            return "restart";
-        }
-        else {
-            printf("Invalid command. Try 'Help'.\n");
-        }
-    }
-     // --- CORNER Location Commands ---
-    else if (strcmp(current_location, "corner") == 0) {
-        if (has_item(inventory, "mask") && inventory->used_mask) {
-            printf("%s\n", get_dialogue(current_location, "corner_peek", sweet_mode));
-            printf("%s\n", get_dialogue(current_location, "corner_back", sweet_mode));
-            new_location = "just_a_chill_guy";
-            inventory->used_mask = false;
         } else {
-            printf("%s\n", get_dialogue(current_location, "corner_seen", sweet_mode));
-            printf("%s\n", get_dialogue(current_location, "corner_join", sweet_mode));
-            printf("%s\n", get_dialogue(current_location, "corner_quadrobist", sweet_mode));
-
-            new_location = "quadrobics_base";
+            say(loc, "invalid_command", sweet);
         }
-    }
-    // --- QUADROBICS_BASE Location Commands ---
-    else if (strcmp(current_location, "quadrobics_base") == 0) {
-         printf("%s\n", get_dialogue(current_location, "quadrobics_move", sweet_mode));
-         printf("%s\n", get_dialogue(current_location, "quadrobics_hints", sweet_mode));
-        if(strcmp(command, "go west") == 0){
+    } else if (is(loc, "quadrobics_base")) {
+        if (is(command, "go west")) {
             new_location = "alex_rivers_quadrobics";
+        } else {
+            say(loc, "invalid_command", sweet);
         }
-        else if (strcmp(command, "inventory") == 0){
-            display_inventory(inventory);
-        }
-        else if (strcmp(command, "exit") == 0)
-        {
-            return "exit";
-        }
-        else if (strcmp(command, "restart") == 0)
-        {
-            return "restart";
-        }
-        else {
-             printf("Invalid command. Try 'Help'.\n");
-        }
-    }
-    // --- ALEX_RIVERS_QUADROBICS Location Commands ---
-    else if (strcmp(current_location, "alex_rivers_quadrobics") == 0) {
-        printf("You approach Alex Rivers, moving like a quadrobist.\n");
-        printf("Alex is startled, drops their phone, and their recording is ruined.\n");
-        printf("You've ruined their day. (Bad Ending)\n");
-        new_location = "exit"; // Bad ending
-    }
-	// --- SCARE_ALEX Location Commands ---
-    else if (strcmp(current_location, "scare_alex") == 0) {
-        printf("%s\n", get_dialogue(current_location, "scare_success", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "scare_drop", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "scare_hints", sweet_mode));
-        if (strcmp(command, "take phone") == 0) {
+    } else if (is(loc, "scare_alex")) {
+        if (is(command, "take phone")) {
             printf("You grab Alex's phone. It's yours now!\n");
             add_item(inventory, "alex_phone");
             new_location = "phone_found";
-        } else if (strcmp(command, "leave phone") == 0) {
-            printf("You decide to leave the phone.  What were you thinking? (Bad Ending)\n");
-            new_location = "exit";  // Bad ending
+        } else if (is(command, "leave phone")) {
+            printf("You decide to leave the phone. What were you thinking? (Bad Ending)\n");
+            return GAME_OVER;
+        } else {
+            say(loc, "invalid_command", sweet);
         }
-        else if (strcmp(command, "inventory") == 0){
-            display_inventory(inventory);
-        }
-        else if (strcmp(command, "exit") == 0)
-        {
-            return "exit";
-        }
-        else if (strcmp(command, "restart") == 0)
-        {
-            return "restart";
-        }
-        else {
-             printf("Invalid command. Try 'Help'.\n");
-        }
-    }
-    // --- PHONE_FOUND Location Commands ---
-    else if (strcmp(current_location, "phone_found") == 0) {
-        printf("%s\n", get_dialogue(current_location, "phone_run", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "phone_what", sweet_mode));
-        printf("%s\n", get_dialogue(current_location, "phone_hints", sweet_mode));
-
-        if (strcmp(command, "jump") == 0) {
-            printf("%s\n", get_dialogue(current_location, "roof_jump", sweet_mode));
+    } else if (is(loc, "phone_found")) {
+        if (is(command, "jump")) {
             new_location = "roof";
-        } else if (strcmp(command, "go back") == 0) {
+        } else if (is(command, "go back") || is(command, "back")) {
             new_location = "glass_floor";
+        } else {
+            say(loc, "invalid_command", sweet);
         }
-        else if (strcmp(command, "inventory") == 0){
-            display_inventory(inventory);
-        }
-        else if (strcmp(command, "exit") == 0)
-        {
-            return "exit";
-        }
-        else if (strcmp(command, "restart") == 0)
-        {
-            return "restart";
-        }
-        else {
-             printf("Invalid command. Try 'Help'.\n");
-        }
-    }
-	 // --- ROOF Location Commands ---
-    else if (strcmp(current_location, "roof") == 0) {
-        // This is a final state.  No commands are possible.
-        return "exit";
+    } else {
+        say(loc, "invalid_command", sweet);
     }
 
     if (new_location != NULL) {
-        free(command); // Free 'command' here, *after* all string comparisons
+        set_location(location, new_location);
+        return GAME_ENTER;
     }
-    return new_location;
+    return GAME_CONTINUE;
 }
 
-
-// Display the current location and available actions
-void display_location(const char *location, Inventory *inventory, bool sweet_mode) {
-    printf("\n---\n");
-
-    if (strcmp(location, "base") == 0) {
-        printf("%s\n", get_dialogue(location, "base_intro", sweet_mode));
-        printf("%s\n", get_dialogue(location, "base_directions", sweet_mode));
-        if (!inventory->met_alex) {
-            printf("%s\n", get_dialogue(location, "base_alex", sweet_mode));
-        }
-        if (!inventory->worker_task && !inventory->met_patrick) {
-           printf("%s\n", get_dialogue(location, "base_worker", sweet_mode));
-        }
-        if(inventory->met_patrick){
-             printf("%s\n", get_dialogue(location, "base_patrick", sweet_mode));
-        }
-        printf("%s\n", get_dialogue(location,"base_what", sweet_mode));
-        printf("%s\n", get_dialogue(location, "base_hints", sweet_mode));
-
-    } else if (strcmp(location, "alex_rivers") == 0) {
-        if (!inventory->met_alex) { // First time meeting Alex
-           //This is handled in process_command
-        }
-        else {
-           //This is handled in process_command.
-        }
-    }
-    else if (strcmp(location, "Patrick") == 0) {
-       //This is handled in process_command
-    } else if (strcmp(location, "entrance") == 0) {
-       //This is handled in process_command
-    }
-    else if (strcmp(location, "ticket_booth") == 0) {
-        //This is handled in process_command
-    }
-    else if(strcmp(location, "security") == 0){
-        //This is handled in process_command
-    }
-    else if (strcmp(location, "elevator") == 0) {
-       //This is handled in process_command
-
-    } else if (strcmp(location, "lookout") == 0) {
-        //This is handled in process_command
-    }
-    else if(strcmp(location, "glass_floor") == 0){
-       //This is handled in process_command
-    }
-    else if(strcmp(location, "edgewalk_registration") == 0){
-        //This is handled in process_command
-    }
-    else if(strcmp(location, "edgewalk_preparation") == 0){
-       //This is handled in process_command
-    }
-    else if(strcmp(location, "edgewalk") == 0){
-        //This is handled in process_command
-    }
-    else if(strcmp(location, "gift_shop") == 0){
-       //This is handled in process_command
-    }
-    else if(strcmp(location, "information_booth") == 0){
-        //This is handled in process_command
-    }
-     else if (strcmp(location, "worker") == 0) {
-       //This is handled in process_command
-    }
-    else if (strcmp(location, "open_box") == 0) {
-       //This is handled in process_command
-    }
-	else if (strcmp(location, "caught_stealing") == 0) {
-        //This is handled in process_command
-    }
-    else if (strcmp(location, "storage_room") == 0) {
-       //This is handled in process_command
-    }
-    else if (strcmp(location, "just_a_chill_guy") == 0) {
-        //This is handled in process_command
-    }
-    else if (strcmp(location, "corner") == 0) {
-       //This is handled in process_command
-    }
-    else if (strcmp(location, "quadrobics_base") == 0) {
-        //This is handled in process_command
-    }
-	else if (strcmp(location, "alex_rivers_quadrobics") == 0) {
-        //This is handled in process_command
-    }
-    else if (strcmp(location, "scare_alex") == 0) {
-        //This is handled in process_command
-    }
-	else if (strcmp(location, "phone_found") == 0) {
-        //This is handled in process_command
-    }
-    else if (strcmp(location, "roof") == 0) {
-       //This is handled in process_command
-    }
-     else {
-        printf("Invalid location: %s\n", location); // Debugging output
-    }
-
-    printf("---\n");
+// Работа с инвентарём
+static bool *item_flag(Inventory *inventory, const char *item) {
+    if (is(item, "ticket")) return &inventory->ticket;
+    if (is(item, "mask")) return &inventory->mask;
+    if (is(item, "edgewalk_ticket")) return &inventory->edgewalk_ticket;
+    if (is(item, "postcards")) return &inventory->postcards;
+    if (is(item, "souvenir")) return &inventory->souvenir;
+    if (is(item, "bible")) return &inventory->bible;
+    if (is(item, "alex_phone")) return &inventory->alex_phone;
+    return NULL; // Нет такого предмета
 }
 
-// Inventory management functions (implementation)
 bool has_item(Inventory *inventory, const char *item) {
-    if (strcmp(item, "ticket") == 0) return inventory->ticket;
-    if (strcmp(item, "mask") == 0) return inventory->mask;
-    if (strcmp(item, "edgewalk_ticket") == 0) return inventory->edgewalk_ticket;
-    if (strcmp(item, "postcards") == 0) return inventory->postcards;
-    if (strcmp(item, "souvenir") == 0) return inventory->souvenir;
-    if (strcmp(item, "bible") == 0) return inventory->bible;
-    if (strcmp(item, "alex_phone") == 0) return inventory->alex_phone;
-    return false; // Item not found
+    bool *flag = item_flag(inventory, item);
+    return flag != NULL && *flag;
 }
 
 void add_item(Inventory *inventory, const char *item) {
-    if (strcmp(item, "ticket") == 0) inventory->ticket = true;
-    else if (strcmp(item, "mask") == 0) inventory->mask = true;
-    else if (strcmp(item, "edgewalk_ticket") == 0) inventory->edgewalk_ticket = true;
-    else if (strcmp(item, "postcards") == 0) inventory->postcards = true;
-    else if (strcmp(item, "souvenir") == 0) inventory->souvenir = true;
-    else if (strcmp(item, "bible") == 0) inventory->bible = true;
-    else if (strcmp(item, "alex_phone") == 0) inventory->alex_phone = true;
-    // No else needed, just ignore invalid items
+    bool *flag = item_flag(inventory, item);
+    if (flag != NULL) *flag = true;
 }
 
 void remove_item(Inventory *inventory, const char *item) {
-    if (strcmp(item, "ticket") == 0) inventory->ticket = false;
-    else if (strcmp(item, "mask") == 0) inventory->mask = false;
-    else if (strcmp(item, "edgewalk_ticket") == 0) inventory->edgewalk_ticket = false;
-    else if (strcmp(item, "postcards") == 0) inventory->postcards = false;
-    else if (strcmp(item, "souvenir") == 0) inventory->souvenir = false;
-    else if (strcmp(item, "bible") == 0) inventory->bible = false;
-    else if (strcmp(item, "alex_phone") == 0) inventory->alex_phone = false;
+    bool *flag = item_flag(inventory, item);
+    if (flag != NULL) *flag = false;
 }
+
 void display_inventory(Inventory *inventory) {
-	printf("Inventory: Money=$%d, ticket=%s, mask=%s, edgewalk_ticket=%s, postcards=%s, souvenir=%s, bible=%s, alex_phone=%s\n",
-		   inventory->money,
-		   inventory->ticket ? "true" : "false",
-		   inventory->mask ? "true" : "false",
-		   inventory->edgewalk_ticket ? "true" : "false",
-		   inventory->postcards ? "true" : "false",
-		   inventory->souvenir ? "true" : "false",
-		   inventory->bible ? "true" : "false",
-		   inventory->alex_phone ? "true" : "false");
+    printf("Inventory: Money=$%d", inventory->money);
+    for (int i = 0; valid_items[i] != NULL; i++) {
+        if (has_item(inventory, valid_items[i])) {
+            printf(", %s", valid_items[i]);
+        }
+    }
+    printf("\n");
 }

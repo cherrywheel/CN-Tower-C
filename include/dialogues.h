@@ -1,17 +1,18 @@
 #ifndef DIALOGUES_H
 #define DIALOGUES_H
 
-#include <stdbool.h> // For bool
+#include <stdbool.h> // Для bool
 
-// Dialogue structure
+// Структура реплики
 typedef struct {
+    const char *location;
     const char *key;
     const char *text;
-    const char *sweet_text; // Sweet+ mode text
+    const char *sweet_text; // Текст для режима Sweet+
 } DialogueEntry;
 
 
-// Function to get dialogue
+// Получить реплику
 const char *get_dialogue(const char *location, const char *key, bool sweet_mode);
 
-#endif //DIALOGUES_H
+#endif // DIALOGUES_H
