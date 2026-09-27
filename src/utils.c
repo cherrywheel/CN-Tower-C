@@ -1,6 +1,23 @@
 #include "game.h"
+#include "ui.h"
+
+#include <sys/stat.h>
+
+#ifndef S_ISDIR
+#define S_ISDIR(mode) (((mode) & S_IFMT) == S_IFDIR)
+#endif
 
 #define SAVE_MAGIC "CNT2" // Менять при изменении формата сохранения
+
+// Путь к файлу данных: в ../data, если игра запущена из src,
+// иначе рядом с тем местом, откуда её запустили (например, из релиза)
+const char *data_file(const char *name) {
+    static char path[256];
+    struct stat st;
+    bool in_repo = stat("../data", &st) == 0 && S_ISDIR(st.st_mode);
+    snprintf(path, sizeof(path), "%s%s", in_repo ? "../data/" : "", name);
+    return path;
+}
 
 // Простое сохранение/загрузка (без JSON, бинарный файл)
 void save_game(const char *location, Inventory *inventory, const char *filename) {
@@ -107,15 +124,23 @@ char *get_player_input(void) {
     }
 
     fflush(stdout);
-    if (fgets(input, INPUT_SIZE, stdin) == NULL) {
-        free(input); // Освобождаем память, если fgets не сработал
-        return NULL;
-    }
+    if (ui_active()) {
+        if (!ui_read_line(input, INPUT_SIZE)) {
+            free(input);
+            return NULL;
+        }
+    } else {
+        ui_set_hints(NULL, 0, 0); // Подсказки действуют на одно чтение
+        if (fgets(input, INPUT_SIZE, stdin) == NULL) {
+            free(input); // Освобождаем память, если fgets не сработал
+            return NULL;
+        }
 
-    // Отбросить хвост слишком длинной строки
-    if (strchr(input, '\n') == NULL) {
-        int c;
-        while ((c = getchar()) != '\n' && c != EOF) {}
+        // Отбросить хвост слишком длинной строки
+        if (strchr(input, '\n') == NULL) {
+            int c;
+            while ((c = getchar()) != '\n' && c != EOF) {}
+        }
     }
 
     // Пишем результат в начало буфера, чтобы его можно было освободить

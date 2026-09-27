@@ -9,18 +9,20 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
-    - name: Настройка MSVC
-      uses: ilammy/msvc-dev-cmd@v1
-
+    # Окружение MSVC поднимаем сами: ilammy/msvc-dev-cmd работает только на Node.js 20
     - name: Сборка через nmake
+      shell: cmd
       run: |
+        for /f "usebackq delims=" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set "VS_PATH=%%i"
+        if not defined VS_PATH exit /b 1
+        call "%VS_PATH%\VC\Auxiliary\Build\vcvars64.bat" || exit /b 1
         cd src
         nmake
 
     - name: Загрузка exe
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: cn_tower_game-windows
         path: src\cn_tower_game.exe
@@ -29,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Сборка через make
       run: make -C src CFLAGS="-std=c99 -Wall -Wextra -pedantic -Werror -O2"
@@ -39,3 +41,44 @@ jobs:
         cd src
         CN_TOWER_SEED=1 ./cn_tower_game < ../tests/win_path.txt > ../win_output.txt
         grep -F "(Win)" ../win_output.txt || { cat ../win_output.txt; exit 1; }
+
+    - name: Загрузка бинарника
+      uses: actions/upload-artifact@v7
+      with:
+        name: cn_tower_game-linux
+        path: src/cn_tower_game
+
+  # Релиз на каждый пуш в main, если обе сборки прошли
+  release:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [ build-windows, build-linux ]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Скачать сборки
+      uses: actions/download-artifact@v8
+      with:
+        path: artifacts
+
+    - name: Упаковать
+      run: |
+        mkdir release
+        cp artifacts/cn_tower_game-windows/cn_tower_game.exe release/cn_tower_game-windows.exe
+        mkdir cn_tower_game-linux
+        cp artifacts/cn_tower_game-linux/cn_tower_game README.md cn_tower_game-linux/
+        chmod +x cn_tower_game-linux/cn_tower_game
+        tar -czf release/cn_tower_game-linux.tar.gz cn_tower_game-linux
+
+    - name: Создать релиз
+      env:
+        GH_TOKEN: ${{ github.token }}
+        TAG: v1.0.${{ github.run_number }}
+      run: |
+        gh release create "$TAG" release/* \
+          --target "$GITHUB_SHA" \
+          --title "CN Tower $TAG" \
+          --generate-notes
