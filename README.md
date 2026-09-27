@@ -54,6 +54,7 @@ static so any distro works
 | `ppc64` `powerpc` | old power macs and big endian power |
 | `s390x` | ibm mainframes |
 | `sparc64` | sun and oracle sparc |
+| `e2k` | elbrus 2c3 12c and 16c |
 | `alpha` `hppa` `m68k` `sh4` | museum pieces |
 
 ### bsd and friends
@@ -137,9 +138,13 @@ if it has a c compiler it builds
 
 ### elbrus
 
-purely for fun
+started purely for fun and now its a real build
 
-no prebuilt binary and no ci since mcst doesnt hand out `lcc`
+ci builds it with mcst `lcc` 1.31.05 and plays through to the win under `qemu-e2k`
+
+the build targets e2k v6 so its elbrus 2c3 12c and 16c
+
+the toolchain lives in a private prerelease of this repo so forks wont get this build
 
 on the real thing
 
