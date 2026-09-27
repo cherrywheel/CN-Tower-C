@@ -9,7 +9,7 @@
 #include <ctype.h>
 #include <stdint.h>
 
-// --- Константы ---
+// --- constants ---
 #define STARTING_MONEY 40
 #define TICKET_PRICE 40
 #define EDGEWALK_PRICE 195
@@ -22,7 +22,7 @@
 #define SAVE_FILE data_file("savegame.dat")
 #define AGE_FILE data_file("age.dat")
 
-// --- Структуры данных ---
+// --- data structures ---
 
 typedef struct {
     int money;
@@ -42,18 +42,18 @@ typedef struct {
     bool phone_returned;
 } Inventory;
 
-// Что делать главному циклу после команды или смены локации.
+// what the main loop does after a command or a location change
 typedef enum {
-    GAME_CONTINUE, // Остаться на месте и ждать следующую команду
-    GAME_ENTER,    // (Пере)войти в текущую локацию: вывести её и запустить события
-    GAME_OVER,     // Достигнута концовка
+    GAME_CONTINUE, // stay here and wait for the next command
+    GAME_ENTER,    // (re)enter the current location to print it and run its events
+    GAME_OVER,     // an ending was reached
     GAME_RESTART,
     GAME_EXIT
 } GameState;
 
-// --- Объявления функций (прототипы) ---
+// --- function prototypes ---
 
-// Из game.c
+// from game.c
 void game_seed(uint32_t seed);
 void new_game(char *location, Inventory *inventory);
 GameState enter_location(char *location, Inventory *inventory, bool sweet_mode);
@@ -67,11 +67,11 @@ void add_item(Inventory *inventory, const char *item);
 void remove_item(Inventory *inventory, const char *item);
 void display_inventory(Inventory *inventory);
 
-// Из dialogues.c
+// from dialogues.c
 const char *get_dialogue(const char *location, const char *key, bool sweet_mode);
 void print_cn_tower_art(void);
 
-// Из utils.c
+// from utils.c
 const char *data_file(const char *name);
 void save_game(const char *location, Inventory *inventory, const char *filename);
 bool load_game(char *location, Inventory *inventory, const char *filename);

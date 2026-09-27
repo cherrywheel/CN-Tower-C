@@ -16,22 +16,72 @@ grab a build from [releases](../../releases)
 
 every push to `main` ships a new one
 
-| os | arch | file |
-|---|---|---|
-| windows | x64 | `cn_tower_game-windows-x64.exe` |
-| windows | x86 | `cn_tower_game-windows-x86.exe` |
-| windows | arm64 | `cn_tower_game-windows-arm64.exe` |
-| macos 11+ | apple silicon + intel | `cn_tower_game-macos-universal.tar.gz` |
-| linux | x86_64 | `cn_tower_game-linux-x86_64.tar.gz` |
-| linux | arm64 / baikal-m | `cn_tower_game-linux-aarch64.tar.gz` |
-| linux | armv7 | `cn_tower_game-linux-armhf.tar.gz` |
-| linux | x86 | `cn_tower_game-linux-i686.tar.gz` |
-| linux | risc-v 64 | `cn_tower_game-linux-riscv64.tar.gz` |
-| linux | mips32 le / baikal-t1 | `cn_tower_game-linux-mipsel.tar.gz` |
+every file is the game itself no archives no installers
 
-linux builds are static and run on any distro
+### windows
 
-ci plays every build except windows on arm through to the win and runs the non x86 linux ones under qemu
+| arch | file |
+|---|---|
+| x64 | `cn_tower_game-windows-x64.exe` |
+| x86 | `cn_tower_game-windows-x86.exe` |
+| arm64 | `cn_tower_game-windows-arm64.exe` |
+
+### macos
+
+one universal file for apple silicon and intel on macos 11+
+
+`cn_tower_game-macos-universal`
+
+### linux
+
+static so any distro works
+
+`cn_tower_game-linux-<arch>` where arch is one of
+
+| arch | what runs it |
+|---|---|
+| `x86_64` | your pc |
+| `i686` | your old pc |
+| `aarch64` | raspberry pi 4 and 5 arm servers baikal-m |
+| `armhf` | raspberry pi 2 and 3 on 32 bit |
+| `armel` | raspberry pi 1 and zero and old routers |
+| `riscv64` | risc-v boards |
+| `loongarch64` | loongson |
+| `mipsel` | baikal-t1 and routers |
+| `mips` | big endian routers |
+| `mips64el` `mips64` | 64 bit mips |
+| `ppc64le` | ibm power |
+| `ppc64` `powerpc` | old power macs and big endian power |
+| `s390x` | ibm mainframes |
+| `sparc64` | sun and oracle sparc |
+| `e2k` | elbrus 2c3 12c and 16c |
+| `alpha` `hppa` `m68k` `sh4` | museum pieces |
+
+### bsd and friends
+
+`cn_tower_game-<os>-x86_64` for `freebsd` `openbsd` `netbsd` `dragonflybsd` `solaris` `illumos` `haiku`
+
+### webassembly
+
+`cn_tower_game-wasm32-wasi.wasm` runs anywhere with a wasi runtime
+
+```
+wasmtime cn_tower_game-wasm32-wasi.wasm
+```
+
+no terminal in wasi so it always plays in plain mode
+
+to keep saves give it the current dir
+
+```
+wasmtime --dir=. cn_tower_game-wasm32-wasi.wasm
+```
+
+### how its tested
+
+ci plays every build except windows on arm through to the win
+
+linux ones run under qemu and bsd solaris and haiku ones run in real vms
 
 ### windows on arm
 
@@ -41,12 +91,21 @@ the build exists because it was one line in ci
 
 ci never even runs it so if it breaks thats your problem
 
-### macos
+### running on unix
 
-the build isnt signed so clear the quarantine flag first
+browsers drop the executable bit so give it back
 
 ```
-xattr -d com.apple.quarantine cn_tower_game
+chmod +x cn_tower_game-linux-x86_64
+./cn_tower_game-linux-x86_64
+```
+
+the macos build isnt signed so also clear the quarantine flag
+
+```
+chmod +x cn_tower_game-macos-universal
+xattr -d com.apple.quarantine cn_tower_game-macos-universal
+./cn_tower_game-macos-universal
 ```
 
 ## build
@@ -58,11 +117,19 @@ cd src
 nmake
 ```
 
-linux macos bsd
+linux and macos
 
 ```
 cd src
 make
+```
+
+bsd solaris haiku or anything else with a c compiler
+
+this builds it with the system `cc` and plays through to the win to prove it works
+
+```
+sh tests/ci_build.sh
 ```
 
 plain c99 and posix (winapi on windows)
@@ -71,9 +138,13 @@ if it has a c compiler it builds
 
 ### elbrus
 
-purely for fun
+started purely for fun and now its a real build
 
-no prebuilt binary and no ci since mcst doesnt hand out `lcc`
+ci builds it with mcst `lcc` 1.31.05 and plays through to the win under `qemu-e2k`
+
+the build targets e2k v6 so its elbrus 2c3 12c and 16c
+
+the toolchain lives in a private prerelease of this repo so forks wont get this build
 
 on the real thing
 

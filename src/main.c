@@ -3,7 +3,7 @@
 
 #define MAX_COMMANDS 32
 
-// Проверка возраста, как в Python-версии: спросить один раз и запомнить
+// age check same as the python version ask once and remember
 static bool check_age(void) {
     int age = load_age(AGE_FILE);
     if (age >= MIN_AGE) {
@@ -40,11 +40,11 @@ int main(int argc, char **argv) {
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--plain") == 0) {
-            allow_tui = false; // Обычный построчный режим без TUI
+            allow_tui = false; // plain line by line mode without the tui
         }
     }
 
-    const char *seed = getenv("CN_TOWER_SEED"); // Чтобы варианты у Алекса повторялись (для тестов)
+    const char *seed = getenv("CN_TOWER_SEED"); // makes alexs options repeatable for tests
     game_seed(seed != NULL ? (uint32_t)strtoul(seed, NULL, 10) : (uint32_t)time(NULL));
 
     ui_init(allow_tui);
@@ -75,7 +75,7 @@ int main(int argc, char **argv) {
             printf("Game over. Type 'Restart' to play again, 'Load' to load your save or 'Exit' to quit.\n");
         }
 
-        // Статус и подсказки для TUI
+        // status and hints for the tui
         char status[256];
         const char *commands[MAX_COMMANDS];
         int count = 0;
@@ -98,7 +98,7 @@ int main(int argc, char **argv) {
         printf("> ");
         char *command = get_player_input();
         if (command == NULL) {
-            break; // Ввод закончился
+            break; // end of input
         }
 
         if (state == GAME_OVER) {

@@ -1,5 +1,5 @@
-# src/GNUmakefile (GNU make, gcc/clang)
-# nmake на Windows берёт Makefile.
+# src/GNUmakefile for gnu make with gcc or clang
+# nmake on windows uses Makefile instead
 
 CC ?= cc
 CFLAGS ?= -std=c99 -Wall -Wextra -pedantic -O2
