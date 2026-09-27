@@ -7,43 +7,36 @@
 # and /artifacts gets the built packages
 
 set -e
-cd /builder
 
-# the release containers ship setup.sh that downloads and unpacks the sdk
+BUILDER_DIR="${BUILDER_DIR:-/builder}"
+CACHE_DIR="${CACHE_DIR:-/cache}"
+export CACHE_DIR
+cd "$BUILDER_DIR"
+
+# the release containers ship setup.sh that downloads checks and unpacks the sdk
+# we keep that script as is and only swap the line that downloads the archive
+# so the signature and checksum checks stay exactly the ones openwrt ships
 if [ -f setup.sh ]; then
-    FILE_HOST="${UPSTREAM_URL:-${FILE_HOST:-https://downloads.openwrt.org}}"
-
-    if [ -z "$TARGET" ] || [ -z "$VERSION_PATH" ] || [ -z "$DOWNLOAD_FILE" ]; then
-        echo "image doesnt say where its sdk lives so falling back to setup.sh"
-        bash setup.sh
+    if grep -q '^wget .*\$file_name' setup.sh; then
+        awk '
+            /^wget .*\$file_name/ {
+                print "if [ -f \"$CACHE_DIR/$file_name\" ] && grep \"$file_name\" sha256sums | (cd \"$CACHE_DIR\" && sha256sum -c -); then"
+                print "    echo \"sdk from cache: $file_name\""
+                print "    cp \"$CACHE_DIR/$file_name\" ."
+                print "else"
+                print "    " $0
+                print "    rm -f \"$CACHE_DIR\"/*"
+                print "    cp \"$file_name\" \"$CACHE_DIR/\""
+                print "fi"
+                next
+            }
+            { print }
+        ' setup.sh > setup-cached.sh
+        bash setup-cached.sh
+        rm -f setup-cached.sh
     else
-        DOWNLOAD_PATH="$VERSION_PATH/targets/$TARGET"
-
-        # the checksum list is tiny so always fetch it fresh and check its signature
-        wget -nv "$FILE_HOST/$DOWNLOAD_PATH/sha256sums" -O sha256sums
-        wget -nv "$FILE_HOST/$DOWNLOAD_PATH/sha256sums.asc" -O sha256sums.asc
-        gpg --import /builder/keys/*.asc
-        gpg --with-fingerprint --verify sha256sums.asc sha256sums
-
-        file_name="$(grep "$DOWNLOAD_FILE" sha256sums | cut -d "*" -f 2)"
-        if [ -z "$file_name" ]; then
-            echo "no file matching $DOWNLOAD_FILE in sha256sums"
-            exit 1
-        fi
-        grep "$file_name" sha256sums > sha256sums_min
-
-        # reuse the cached archive only if its checksum still matches
-        if [ -f "/cache/$file_name" ] && (cd /cache && sha256sum -c /builder/sha256sums_min); then
-            echo "sdk from cache: $file_name"
-        else
-            echo "downloading sdk: $file_name"
-            rm -f /cache/*
-            wget -nv "$FILE_HOST/$DOWNLOAD_PATH/$file_name" -O "/cache/$file_name"
-            (cd /cache && sha256sum -c /builder/sha256sums_min)
-        fi
-
-        tar xf "/cache/$file_name" --strip=1 --no-same-owner -C .
-        rm -rf sha256sums sha256sums_min sha256sums.asc keys setup.sh
+        echo "setup.sh looks different than expected so no cache this time"
+        bash setup.sh
     fi
 fi
 
