@@ -1,117 +1,148 @@
 <p align="center">
-  <img src="assets/social-preview.png" alt="CN Tower: a text adventure in C">
+  <img src="assets/social-preview.png" alt="cn tower text adventure in c">
 </p>
 
-# CN Tower
+# cn tower
 
-A text adventure about getting to the top of Toronto's CN Tower — and doing the EdgeWalk.
-Rewritten in C from the [Python original](https://github.com/cherrywheel/CN-Tower):
-no dependencies, no internet, one binary.
+a text adventure about climbing torontos cn tower and doing the edgewalk
 
-## Download
+rewritten in c from the [python original](https://github.com/cherrywheel/CN-Tower)
 
-Grab a build from [Releases](../../releases). Every push to `main` ships a new one.
+no dependencies no internet just one binary
 
-| OS | Architecture | File |
+## download
+
+grab a build from [releases](../../releases)
+
+every push to `main` ships a new one
+
+| os | arch | file |
 |---|---|---|
-| Windows | x64 | `cn_tower_game-windows-x64.exe` |
-| Windows | x86 | `cn_tower_game-windows-x86.exe` |
-| Windows | ARM64 | `cn_tower_game-windows-arm64.exe` |
-| macOS 11+ | Apple Silicon + Intel | `cn_tower_game-macos-universal.tar.gz` |
-| Linux | x86_64 | `cn_tower_game-linux-x86_64.tar.gz` |
-| Linux | ARM64 / Baikal-M | `cn_tower_game-linux-aarch64.tar.gz` |
-| Linux | ARMv7 | `cn_tower_game-linux-armhf.tar.gz` |
-| Linux | x86 | `cn_tower_game-linux-i686.tar.gz` |
-| Linux | RISC-V 64 | `cn_tower_game-linux-riscv64.tar.gz` |
-| Linux | MIPS32 LE / Baikal-T1 | `cn_tower_game-linux-mipsel.tar.gz` |
+| windows | x64 | `cn_tower_game-windows-x64.exe` |
+| windows | x86 | `cn_tower_game-windows-x86.exe` |
+| windows | arm64 | `cn_tower_game-windows-arm64.exe` |
+| macos 11+ | apple silicon + intel | `cn_tower_game-macos-universal.tar.gz` |
+| linux | x86_64 | `cn_tower_game-linux-x86_64.tar.gz` |
+| linux | arm64 / baikal-m | `cn_tower_game-linux-aarch64.tar.gz` |
+| linux | armv7 | `cn_tower_game-linux-armhf.tar.gz` |
+| linux | x86 | `cn_tower_game-linux-i686.tar.gz` |
+| linux | risc-v 64 | `cn_tower_game-linux-riscv64.tar.gz` |
+| linux | mips32 le / baikal-t1 | `cn_tower_game-linux-mipsel.tar.gz` |
 
-Linux builds are static and run on any distro. In CI every build plays the
-game through to the win — the non-x86 Linux ones under QEMU.
+linux builds are static and run on any distro
 
-Windows on ARM: I couldn't care less about it, but it's there. It's the one
-build CI only compiles and never runs.
+ci plays every build except windows on arm through to the win and runs the non x86 linux ones under qemu
 
-macOS builds aren't signed, so clear the quarantine flag first:
+### windows on arm
+
+idgaf about windows on arm
+
+the build exists because it was one line in ci
+
+ci never even runs it so if it breaks thats your problem
+
+### macos
+
+the build isnt signed so clear the quarantine flag first
 
 ```
 xattr -d com.apple.quarantine cn_tower_game
 ```
 
-## Build
+## build
 
-Windows, from a Developer Command Prompt:
+windows from a developer command prompt
 
 ```
 cd src
 nmake
 ```
 
-Linux, macOS, BSD:
+linux macos bsd
 
 ```
 cd src
 make
 ```
 
-Plain C99 + POSIX (WinAPI on Windows). If it has a C compiler, it builds.
+plain c99 and posix (winapi on windows)
 
-### Elbrus
+if it has a c compiler it builds
 
-Purely for fun. No prebuilt binary and no CI — MCST doesn't hand out `lcc`.
-On the real thing:
+### elbrus
+
+purely for fun
+
+no prebuilt binary and no ci since mcst doesnt hand out `lcc`
+
+on the real thing
 
 ```
 cd src
 make CC=lcc
 ```
 
-## Play
+## play
 
-Type commands like `Go North`, `Buy Ticket`, `Look Around`. Case doesn't matter.
+type commands like `go north` `buy ticket` `look around`
 
-| Command | What it does |
+case doesnt matter
+
+| command | what it does |
 |---|---|
-| `Help` | List commands |
-| `Look` | Describe where you are again |
-| `Inventory` | Money and items |
-| `Save` / `Load` | Save and load the game |
-| `Restart` / `Exit` | Start over / quit |
-| `Debug` | Money, items, teleport, Sweet+ mode |
+| `help` | list commands |
+| `look` | describe where you are again |
+| `inventory` | money and items |
+| `save` / `load` | save and load the game |
+| `restart` / `exit` | start over or quit |
+| `debug` | money items teleport and sweet+ mode |
 
-One good ending, several bad ones.
+one good ending and a bunch of bad ones
 
-Run from `src`, the game keeps saves in `../data/`. Run from anywhere else,
-it keeps them in the current directory.
+run from `src` and saves go to `../data/`
 
-## Interface
+run from anywhere else and they go to the current directory
 
-In a terminal the game goes full screen: location, money and items up top,
-the story in the middle, hints at the bottom — only the actions that work
-right now, plus the general commands.
+## interface
 
-| Key | Action |
+in a terminal the game goes full screen
+
+location money and items up top
+
+the story in the middle
+
+hints at the bottom showing only what works right now plus the general commands
+
+| key | action |
 |---|---|
-| `Tab` | Complete a command, press again to cycle |
-| `→` | Accept the grey suggestion |
-| `↑` / `↓` | Command history |
-| `Ctrl+U` | Clear the line |
-| `Ctrl+D` / `Ctrl+C` | Quit |
+| `tab` | complete a command and press again to cycle |
+| `→` | accept the grey suggestion |
+| `↑` `↓` | command history |
+| `ctrl+u` | clear the line |
+| `ctrl+d` `ctrl+c` | quit |
 
-`--plain` or `CN_TOWER_PLAIN=1` gives you the classic line-by-line mode.
-It also kicks in by itself when output isn't a terminal.
+`--plain` or `CN_TOWER_PLAIN=1` gives you the classic line by line mode
 
-## Changes from the Python version
+it also kicks in on its own when output isnt a terminal
 
-* No IP-based country check. Sweet+ mode lives in the debug menu.
-* Dialogue and ASCII art are built in.
-* The EdgeWalk is actually winnable now. Just a Chill Guy is east of the
-  Glass Floor, Alex's phone can be returned at the Info Booth for $100
-  (`Return Phone`), the LookOut has an elevator back down (`Go Back`), and
-  Alex can be met a second time.
+## changes from the python version
 
-## Art
+- no ip based country check and sweet+ mode lives in the debug menu
+- dialogue and ascii art are built in
+- the edgewalk is actually winnable now
+  - just a chill guy is east of the glass floor
+  - alexs phone can be returned at the info booth for $100 with `return phone`
+  - the lookout has an elevator back down with `go back`
+  - alex can be met a second time
 
-`assets/` holds the artwork: `social-preview.png` (this README and the repo
-preview), `cn_tower.ico` (embedded into the Windows `.exe`) and a few
-alternatives. The repo preview is set by hand under
-Settings → General → Social preview.
+## art
+
+`assets/` holds the artwork
+
+`social-preview.png` is this readme header and the repo preview
+
+`cn_tower.ico` gets embedded into the windows exe
+
+the rest are alternatives
+
+the repo preview is set by hand in settings → general → social preview
