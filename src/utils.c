@@ -47,9 +47,11 @@ bool load_game(char *location, Inventory *inventory, const char *filename) {
         return false;
     }
 
-    char magic[4];
-    char loc_buffer[LOCATION_SIZE];
+    // zeroed up front so msvc doesnt warn about reading them before fread fills them
+    char magic[4] = {0};
+    char loc_buffer[LOCATION_SIZE] = {0};
     Inventory loaded;
+    memset(&loaded, 0, sizeof(loaded));
     bool ok = fread(magic, sizeof(magic), 1, file) == 1
            && memcmp(magic, SAVE_MAGIC, sizeof(magic)) == 0
            && fread(loc_buffer, sizeof(loc_buffer), 1, file) == 1

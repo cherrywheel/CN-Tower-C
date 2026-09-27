@@ -310,6 +310,7 @@ jobs:
   # the package gets installed with opkg or apk and played through to the win
   build-openwrt:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -330,20 +331,34 @@ jobs:
     - name: copy the game sources into the package
       run: cp -r src include openwrt/cn-tower/
 
+    # the sdk archive is a few hundred mb from downloads.openwrt.org so keep it
+    # between runs and only fetch the small signed checksum list every time
+    - name: cache the openwrt sdk
+      uses: actions/cache@v5
+      with:
+        path: ~/openwrt-sdk-cache
+        key: openwrt-sdk-${{ matrix.arch }}-${{ matrix.openwrt.version }}
+
     - name: build with the openwrt sdk
-      uses: openwrt/gh-action-sdk@v11
-      env:
-        ARCH: ${{ matrix.arch }}-${{ matrix.openwrt.version }}
-        FEED_DIR: ${{ github.workspace }}/openwrt
-        FEEDNAME: cntower
-        PACKAGES: cn-tower
-        NO_DEFAULT_FEEDS: 1
+      run: |
+        mkdir -p ~/openwrt-sdk-cache openwrt-out
+        # the sdk runs as its own user so let it write everywhere it needs to
+        chmod -R a+rwX ~/openwrt-sdk-cache openwrt openwrt-out
+        docker run --rm \
+          -v "$HOME/openwrt-sdk-cache:/cache" \
+          -v "$PWD/openwrt:/feed" \
+          -v "$PWD/openwrt-out:/artifacts" \
+          -v "$PWD/.github/openwrt-sdk-build.sh:/openwrt-sdk-build.sh:ro" \
+          --entrypoint /bin/bash \
+          "ghcr.io/openwrt/sdk:${{ matrix.arch }}-${{ matrix.openwrt.version }}" \
+          /openwrt-sdk-build.sh
+        sudo chown -R "$(id -u):$(id -g)" ~/openwrt-sdk-cache openwrt openwrt-out
 
     - name: find the package
       run: |
-        pkg=$(find bin/packages -name "cn-tower*.${{ matrix.openwrt.ext }}" | head -n 1)
+        pkg=$(find openwrt-out/bin/packages -name "cn-tower*.${{ matrix.openwrt.ext }}" | head -n 1)
         if [ -z "$pkg" ]; then
-          find bin -type f
+          find openwrt-out -type f
           exit 1
         fi
         mkdir -p openwrt-test
