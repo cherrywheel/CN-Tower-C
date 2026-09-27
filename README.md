@@ -1,122 +1,117 @@
 <p align="center">
-  <img src="assets/cover.webp" width="360" alt="Котик в шарфе смотрит на CN Tower ночью">
+  <img src="assets/social-preview.png" alt="CN Tower: a text adventure in C">
 </p>
 
-# CN Tower (C)
+# CN Tower
 
-Порт текстового квеста [CN-Tower](https://github.com/cherrywheel/CN-Tower) с Python на C.
+A text adventure about getting to the top of Toronto's CN Tower — and doing the EdgeWalk.
+Rewritten in C from the [Python original](https://github.com/cherrywheel/CN-Tower):
+no dependencies, no internet, one binary.
 
-## Скачать
+## Download
 
-Готовые сборки лежат в [Releases](../../releases).
-Релиз собирается автоматически после каждого пуша в `main`.
+Grab a build from [Releases](../../releases). Every push to `main` ships a new one.
 
-| Система | Архитектура | Файл |
+| OS | Architecture | File |
 |---|---|---|
 | Windows | x64 | `cn_tower_game-windows-x64.exe` |
-| Windows | x86 (32 бита) | `cn_tower_game-windows-x86.exe` |
+| Windows | x86 | `cn_tower_game-windows-x86.exe` |
 | Windows | ARM64 | `cn_tower_game-windows-arm64.exe` |
-| macOS 11+ | Apple Silicon и Intel | `cn_tower_game-macos-universal.tar.gz` |
+| macOS 11+ | Apple Silicon + Intel | `cn_tower_game-macos-universal.tar.gz` |
 | Linux | x86_64 | `cn_tower_game-linux-x86_64.tar.gz` |
-| Linux | ARM64, в том числе Байкал-М | `cn_tower_game-linux-aarch64.tar.gz` |
-| Linux | ARMv7 (Raspberry Pi и т. п.) | `cn_tower_game-linux-armhf.tar.gz` |
-| Linux | x86 (32 бита) | `cn_tower_game-linux-i686.tar.gz` |
+| Linux | ARM64 / Baikal-M | `cn_tower_game-linux-aarch64.tar.gz` |
+| Linux | ARMv7 | `cn_tower_game-linux-armhf.tar.gz` |
+| Linux | x86 | `cn_tower_game-linux-i686.tar.gz` |
 | Linux | RISC-V 64 | `cn_tower_game-linux-riscv64.tar.gz` |
-| Linux | MIPS32 LE, Байкал-T1 | `cn_tower_game-linux-mipsel.tar.gz` |
+| Linux | MIPS32 LE / Baikal-T1 | `cn_tower_game-linux-mipsel.tar.gz` |
 
-Linux-сборки статические, работают на любом дистрибутиве. Каждая сборка,
-кроме Windows ARM64, в CI проходит игру до победы (не x86 — под QEMU).
+Linux builds are static and run on any distro. In CI every build plays the
+game through to the win — the non-x86 Linux ones under QEMU.
 
-На macOS сборка не подписана, поэтому после распаковки снимите карантин:
+Windows on ARM: I couldn't care less about it, but it's there. It's the one
+build CI only compiles and never runs.
+
+macOS builds aren't signed, so clear the quarantine flag first:
 
 ```
 xattr -d com.apple.quarantine cn_tower_game
-./cn_tower_game
 ```
 
-## Сборка
+## Build
 
-Windows (Developer Command Prompt для MSVC):
+Windows, from a Developer Command Prompt:
 
 ```
 cd src
 nmake
-cn_tower_game.exe
 ```
 
-Linux / macOS / BSD:
+Linux, macOS, BSD:
 
 ```
 cd src
 make
-./cn_tower_game
 ```
 
-Код — чистый C99 плюс POSIX (на Windows — WinAPI), без внешних библиотек,
-поэтому собирается на любой архитектуре, где есть компилятор C.
+Plain C99 + POSIX (WinAPI on Windows). If it has a C compiler, it builds.
 
-### Эльбрус
+### Elbrus
 
-Под Эльбрус (e2k) готовой сборки нет: у GitHub нет таких машин, а компилятор
-`lcc` от МЦСТ не распространяется свободно. Код не использует ничего,
-кроме C99 и POSIX, поэтому на самом Эльбрусе игра должна собираться тем же
-`make` (на реальной машине это пока не проверялось):
+Purely for fun. No prebuilt binary and no CI — MCST doesn't hand out `lcc`.
+On the real thing:
 
 ```
 cd src
 make CC=lcc
-./cn_tower_game
 ```
 
-Если игра запущена из `src`, сохранения и возраст пишутся в `../data/`,
-иначе — в папку, из которой её запустили.
+## Play
 
-## Интерфейс
+Type commands like `Go North`, `Buy Ticket`, `Look Around`. Case doesn't matter.
 
-В терминале игра открывается в полноэкранном режиме:
+| Command | What it does |
+|---|---|
+| `Help` | List commands |
+| `Look` | Describe where you are again |
+| `Inventory` | Money and items |
+| `Save` / `Load` | Save and load the game |
+| `Restart` / `Exit` | Start over / quit |
+| `Debug` | Money, items, teleport, Sweet+ mode |
 
-* сверху — локация, деньги и предметы;
-* в середине — текст игры;
-* внизу — подсказки: действия, доступные прямо сейчас, и общие команды.
+One good ending, several bad ones.
 
-Клавиши:
+Run from `src`, the game keeps saves in `../data/`. Run from anywhere else,
+it keeps them in the current directory.
 
-* `Tab` — дополнить команду, повторные нажатия перебирают варианты;
-* `→` — принять серую подсказку;
-* `↑` / `↓` — история команд;
-* `Ctrl+U` — стереть строку, `Ctrl+D` / `Ctrl+C` — выйти.
+## Interface
 
-Обычный построчный режим: `cn_tower_game --plain` или переменная окружения
-`CN_TOWER_PLAIN=1`. Он же включается сам, если вывод идёт не в терминал.
+In a terminal the game goes full screen: location, money and items up top,
+the story in the middle, hints at the bottom — only the actions that work
+right now, plus the general commands.
 
-## Как играть
+| Key | Action |
+|---|---|
+| `Tab` | Complete a command, press again to cycle |
+| `→` | Accept the grey suggestion |
+| `↑` / `↓` | Command history |
+| `Ctrl+U` | Clear the line |
+| `Ctrl+D` / `Ctrl+C` | Quit |
 
-Вводишь команды вроде `Go North`, `Buy Ticket`, `Look Around` (регистр не важен).
+`--plain` or `CN_TOWER_PLAIN=1` gives you the classic line-by-line mode.
+It also kicks in by itself when output isn't a terminal.
 
-* `Help` — список команд, `Look` — ещё раз показать, где ты.
-* `Inventory` — деньги и предметы.
-* `Save` / `Load` — сохранить и загрузить игру.
-* `Restart` — начать заново, `Exit` — выйти.
-* `Debug` — меню отладки (деньги, предметы, телепорт, режим Sweet+).
+## Changes from the Python version
 
-Есть одна хорошая концовка (EdgeWalk) и несколько плохих.
+* No IP-based country check. Sweet+ mode lives in the debug menu.
+* Dialogue and ASCII art are built in.
+* The EdgeWalk is actually winnable now. Just a Chill Guy is east of the
+  Glass Floor, Alex's phone can be returned at the Info Booth for $100
+  (`Return Phone`), the LookOut has an elevator back down (`Go Back`), and
+  Alex can be met a second time.
 
-## Отличия от Python-версии
+## Art
 
-* Нет определения страны по IP: режим Sweet+ просто включается в меню отладки.
-* Реплики и ASCII-арт вшиты в программу, интернет не нужен.
-* Добавлены ходы, без которых EdgeWalk был недостижим: Just a Chill Guy
-  находится к востоку от стеклянного пола, найденный телефон можно вернуть
-  в справочной (`Return Phone`) за награду $100, со смотровой площадки можно
-  спуститься на лифте (`Go Back`), а Алекса можно встретить второй раз.
-
-## Картинки
-
-В `assets/`:
-
-* `cover.webp` — обложка README;
-* `icon.webp`, `cn_tower.ico` — иконка, `.ico` вшивается в `cn_tower_game.exe`;
-* `sticker.webp`, `icon-flat.png` — запасные варианты;
-* `social-preview.png` — превью репозитория 1280×640, загружается вручную:
-  Settings → General → Social preview.
-
+`assets/` holds the artwork: `social-preview.png` (this README and the repo
+preview), `cn_tower.ico` (embedded into the Windows `.exe`) and a few
+alternatives. The repo preview is set by hand under
+Settings → General → Social preview.
