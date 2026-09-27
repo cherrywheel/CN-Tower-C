@@ -159,6 +159,28 @@ xattr -d com.apple.quarantine cn_tower_game-macos-universal
 
 ## build
 
+the easy way is one script that finds or installs a c compiler builds the game and plays through to the win to prove it works
+
+anything unix like including linux macos bsd solaris haiku termux wsl and msys2
+
+```
+sh setup.sh
+```
+
+windows
+
+```
+setup.cmd
+```
+
+it asks before installing anything and `--yes` skips the questions
+
+it knows apt dnf yum pacman zypper apk xbps emerge eopkg swupd nix brew pkg pkg_add pkgin pkgman and winget
+
+on debian or ubuntu `sh setup.sh --cross` also installs every cross compiler and qemu that ci uses and plays through to the win on all 18 linux archs right on your machine
+
+### by hand
+
 windows from a developer command prompt
 
 ```
@@ -171,14 +193,6 @@ linux and macos
 ```
 cd src
 make
-```
-
-bsd solaris haiku or anything else with a c compiler
-
-this builds it with the system `cc` and plays through to the win to prove it works
-
-```
-sh tests/ci_build.sh
 ```
 
 plain c99 and posix (winapi on windows)

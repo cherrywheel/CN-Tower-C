@@ -25,6 +25,19 @@ jobs:
     steps:
     - uses: actions/checkout@v6
 
+    - name: setup.cmd with gcc
+      if: matrix.arch == 'x64'
+      shell: cmd
+      run: setup.cmd --yes --gcc
+
+    - name: setup.cmd with msvc
+      if: matrix.arch == 'x64'
+      shell: cmd
+      run: |
+        setup.cmd --yes || exit /b 1
+        cd src
+        nmake /nologo clean
+
     # set up msvc by hand since ilammy/msvc-dev-cmd only runs on node 20
     - name: build with nmake
       shell: cmd
@@ -87,6 +100,12 @@ jobs:
         sudo apt-get update -qq
         sudo apt-get install -y -qq --no-install-recommends ${{ matrix.pkgs }} qemu-user
 
+    - name: setup.sh
+      if: matrix.arch == 'x86_64'
+      run: |
+        sh setup.sh --yes
+        make -C src clean
+
     # zig from pypi since setup-zig still runs on node 20
     - name: install zig
       if: matrix.zig
@@ -114,6 +133,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v6
+
+    - name: setup.sh
+      run: |
+        sh setup.sh --yes
+        make -C src clean
 
     - name: build with make
       run: |
@@ -161,7 +185,7 @@ jobs:
         name: cn_tower_game-wasm32-wasi
         path: src/cn_tower_game
 
-  # native builds inside vms and each one plays through to the win
+  # native builds inside vms through setup.sh and each one plays through to the win
   build-freebsd:
     runs-on: ubuntu-latest
     steps:
@@ -170,7 +194,7 @@ jobs:
       uses: vmactions/freebsd-vm@v1
       with:
         usesh: true
-        run: sh tests/ci_build.sh
+        run: sh setup.sh --yes
     - uses: actions/upload-artifact@v7
       with:
         name: cn_tower_game-freebsd-x86_64
@@ -184,7 +208,7 @@ jobs:
       uses: vmactions/openbsd-vm@v1
       with:
         usesh: true
-        run: sh tests/ci_build.sh
+        run: sh setup.sh --yes
     - uses: actions/upload-artifact@v7
       with:
         name: cn_tower_game-openbsd-x86_64
@@ -198,7 +222,7 @@ jobs:
       uses: vmactions/netbsd-vm@v1
       with:
         usesh: true
-        run: sh tests/ci_build.sh
+        run: sh setup.sh --yes
     - uses: actions/upload-artifact@v7
       with:
         name: cn_tower_game-netbsd-x86_64
@@ -212,7 +236,7 @@ jobs:
       uses: vmactions/dragonflybsd-vm@v1
       with:
         usesh: true
-        run: sh tests/ci_build.sh
+        run: sh setup.sh --yes
     - uses: actions/upload-artifact@v7
       with:
         name: cn_tower_game-dragonflybsd-x86_64
@@ -227,7 +251,7 @@ jobs:
       with:
         usesh: true
         prepare: pkg install -q developer/gcc || true
-        run: sh tests/ci_build.sh
+        run: sh setup.sh --yes
     - uses: actions/upload-artifact@v7
       with:
         name: cn_tower_game-solaris-x86_64
@@ -242,7 +266,7 @@ jobs:
       with:
         usesh: true
         prepare: pkg install -q build-essential || true
-        run: sh tests/ci_build.sh
+        run: sh setup.sh --yes
     - uses: actions/upload-artifact@v7
       with:
         name: cn_tower_game-illumos-x86_64
@@ -256,7 +280,7 @@ jobs:
       uses: vmactions/haiku-vm@v1
       with:
         usesh: true
-        run: sh tests/ci_build.sh
+        run: sh setup.sh --yes
     - uses: actions/upload-artifact@v7
       with:
         name: cn_tower_game-haiku-x86_64
@@ -322,11 +346,12 @@ jobs:
         openwrt:
           - { version: 24.10.8, series: "24.10", ext: ipk }
           - { version: 25.12.5, series: "25.12", ext: apk }
+        # the rootfs images tag their platform with openwrt arch names except x86_64
         include:
-          - { arch: x86_64,                  test: true }
-          - { arch: mips_24kc,               test: true }
-          - { arch: aarch64_generic,         test: true }
-          - { arch: arm_cortex-a9_vfpv3-d16, test: true }
+          - { arch: x86_64,                  test: true, platform: linux/amd64 }
+          - { arch: mips_24kc,               test: true, platform: linux/mips_24kc }
+          - { arch: aarch64_generic,         test: true, platform: linux/aarch64_generic }
+          - { arch: arm_cortex-a9_vfpv3-d16, test: true, platform: linux/arm_cortex-a9_vfpv3-d16 }
 
     steps:
     - uses: actions/checkout@v6
@@ -355,14 +380,18 @@ jobs:
         cp tests/win_path.txt openwrt-test/
         ls -la openwrt-test
 
+    # ubuntus qemu-user-static registers every arch including 32 bit mips
+    # which docker/setup-qemu-action doesnt have
     - name: set up qemu for the openwrt rootfs
       if: matrix.test
-      uses: docker/setup-qemu-action@v4
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq --no-install-recommends qemu-user-static
 
     - name: install and play through to the win in openwrt
       if: matrix.test
       run: |
-        docker run --rm -v "$PWD/openwrt-test:/test" "openwrt/rootfs:${{ matrix.arch }}-${{ matrix.openwrt.version }}" /bin/sh -c '
+        docker run --rm --platform "${{ matrix.platform }}" -v "$PWD/openwrt-test:/test" "openwrt/rootfs:${{ matrix.arch }}-${{ matrix.openwrt.version }}" /bin/sh -c '
           set -e
           if [ -f /test/cn-tower.apk ]; then
             apk add --allow-untrusted /test/cn-tower.apk
